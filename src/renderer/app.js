@@ -29645,7 +29645,7 @@ function bindCoverHoldZoom(wrapEl) {
     if (searchBox && nav.firstElementChild !== searchBox) {
       nav.insertBefore(searchBox, nav.firstElementChild);
     }
-    const order = ['interface', 'theme', 'banners', 'tracks', 'integrations', 'storage', 'about', 'advanced', 'custom-themes', 'plugins'];
+    const order = ['interface', 'theme', 'banners', 'tracks', 'integrations', 'phone', 'storage', 'about', 'advanced', 'custom-themes', 'plugins'];
     const buttons = Array.from(nav.querySelectorAll('.settings-nav-btn'));
     if (!buttons.length) return;
     const btnMap = new Map();
@@ -29798,6 +29798,253 @@ function bindCoverHoldZoom(wrapEl) {
       }
     });
   }
+
+  // -------------------------------------------------------------------------
+  // Phone & Navic settings (Subsonic listener)
+  // -------------------------------------------------------------------------
+  (function initPhoneSettings() {
+    const api = window.electronAPI;
+    const toggleBtn = document.getElementById('btn-phone-enabled');
+    if (!toggleBtn || !api || !api.getMobileConfig) return;
+
+    const els = {
+      toggle: toggleBtn,
+      dot: document.getElementById('phone-status-dot'),
+      statusText: document.getElementById('phone-status-text'),
+      urls: document.getElementById('phone-urls'),
+      copyUrl: document.getElementById('btn-phone-copy-url'),
+      openRemote: document.getElementById('btn-phone-open-remote'),
+      test: document.getElementById('btn-phone-test'),
+      firewall: document.getElementById('btn-phone-firewall'),
+      testResult: document.getElementById('phone-test-result'),
+      username: document.getElementById('phone-username'),
+      password: document.getElementById('phone-password'),
+      copyLogin: document.getElementById('btn-phone-copy-login'),
+      regen: document.getElementById('btn-phone-regen-password'),
+      folders: document.getElementById('phone-folders-list'),
+      addFolder: document.getElementById('btn-phone-add-folder'),
+    };
+
+    let config = null;
+    let status = null;
+    let busy = false;
+    let testMsg = '';
+    let testOk = false;
+
+    async function copyText(text) {
+      const value = String(text || '');
+      if (!value) return false;
+      try {
+        await navigator.clipboard.writeText(value);
+        return true;
+      } catch (_) {}
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = value;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function primaryUrl() {
+      if (!status || !Array.isArray(status.urls) || !status.urls.length) return '';
+      return status.urls[0].url;
+    }
+
+    function showTest(message, ok) {
+      testMsg = message || '';
+      testOk = !!ok;
+      render();
+    }
+
+    function render() {
+      if (!config) return;
+      const enabled = !!config.enabled;
+      els.toggle.classList.toggle('active', enabled);
+      els.toggle.disabled = busy;
+
+      els.username.textContent = config.username || 'riff';
+      els.password.textContent = config.password || '—';
+
+      let dotColor = 'var(--md-sys-color-outline)';
+      let text = 'Off';
+      if (busy) {
+        text = enabled ? 'Starting…' : 'Stopping…';
+        dotColor = '#fbbf24';
+      } else if (!enabled) {
+        text = 'Off';
+      } else if (status && status.running) {
+        text = `Listening on port ${status.port}`;
+        dotColor = '#4ade80';
+      } else if (status && status.error) {
+        text = `Could not start: ${status.error}`;
+        dotColor = '#f87171';
+      } else {
+        text = 'Starting…';
+        dotColor = '#fbbf24';
+      }
+      els.dot.style.background = dotColor;
+      els.statusText.textContent = text;
+
+      if (status && status.running && Array.isArray(status.urls) && status.urls.length) {
+        els.urls.innerHTML = status.urls
+          .map((u) => `<div>${u.url} <span style="opacity:.6;">(${u.iface})</span></div>`)
+          .join('');
+      } else if (enabled) {
+        els.urls.textContent = 'No LAN address found. Connect this PC to Wi-Fi or Ethernet.';
+      } else {
+        els.urls.textContent = 'Not running';
+      }
+
+      if (testMsg) {
+        els.testResult.style.display = '';
+        els.testResult.textContent = testMsg;
+        els.testResult.style.color = testOk ? '#4ade80' : '#f87171';
+      } else {
+        els.testResult.style.display = 'none';
+      }
+
+      const folders = Array.isArray(config.folders) ? config.folders : [];
+      els.folders.innerHTML = '';
+      if (!folders.length) {
+        const empty = document.createElement('span');
+        empty.className = 'setting-hint';
+        empty.textContent = 'No extra folders yet.';
+        els.folders.appendChild(empty);
+      } else {
+        folders.forEach((folder) => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:monospace;font-size:calc(12px * var(--font-scale,1));';
+          const label = document.createElement('span');
+          label.textContent = folder;
+          label.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'btn-outline-pill';
+          remove.style.cssText = 'padding:2px 10px;font-size:calc(11px * var(--font-scale,1));flex-shrink:0;';
+          remove.textContent = 'Remove';
+          remove.addEventListener('click', async () => {
+            try {
+              const res = await api.removeMobileFolder(folder);
+              if (res && res.config) { config = res.config; status = res.status || status; }
+            } catch (_) {}
+            render();
+          });
+          row.appendChild(label);
+          row.appendChild(remove);
+          els.folders.appendChild(row);
+        });
+      }
+    }
+
+    async function refresh() {
+      try {
+        const res = await api.getMobileConfig();
+        if (res) {
+          config = res.config || config;
+          status = res.status || status;
+        }
+      } catch (_) {}
+      render();
+    }
+
+    els.toggle.addEventListener('click', async () => {
+      if (busy || !config) return;
+      busy = true;
+      testMsg = '';
+      render();
+      try {
+        const res = await api.setMobileConfig({ enabled: !config.enabled });
+        if (res) { config = res.config || config; status = res.status || status; }
+      } catch (err) {
+        showTest(`Could not change phone access: ${err && err.message ? err.message : err}`, false);
+      }
+      busy = false;
+      render();
+    });
+
+    els.copyUrl.addEventListener('click', async () => {
+      const url = primaryUrl();
+      if (!url) return showTest('Server is not running yet.', false);
+      const ok = await copyText(url);
+      showTest(ok ? `Copied ${url}` : 'Could not copy.', ok);
+    });
+
+    els.openRemote.addEventListener('click', async () => {
+      try {
+        const res = await api.openMobileRemote();
+        if (res && res.ok === false) showTest(res.error || 'Could not open remote page.', false);
+        else showTest('Opened remote page in your browser.', true);
+      } catch (err) {
+        showTest(err && err.message ? err.message : 'Could not open remote page.', false);
+      }
+    });
+
+    els.test.addEventListener('click', async () => {
+      showTest('Testing…', true);
+      try {
+        const res = await api.testMobileConnection();
+        if (res && res.ok) showTest(`Server replied in ${res.pingMs} ms.`, true);
+        else showTest(`Server did not answer correctly: ${(res && (res.error || `HTTP ${res.statusCode}`)) || 'unknown error'}`, false);
+      } catch (err) {
+        showTest(err && err.message ? err.message : 'Test failed.', false);
+      }
+    });
+
+    els.firewall.addEventListener('click', async () => {
+      try {
+        const res = await api.addMobileFirewallRule();
+        if (res && res.ok) showTest('Windows asked for permission — approve it to open the port.', true);
+        else showTest(`Could not open firewall: ${(res && res.error) || 'unknown error'}`, false);
+      } catch (err) {
+        showTest(err && err.message ? err.message : 'Firewall step failed.', false);
+      }
+    });
+
+    els.copyLogin.addEventListener('click', async () => {
+      if (!config) return;
+      const ok = await copyText(`User: ${config.username}\nPassword: ${config.password}\nPort: ${config.port}`);
+      showTest(ok ? 'Copied username and password.' : 'Could not copy.', ok);
+    });
+
+    els.regen.addEventListener('click', async () => {
+      try {
+        const res = await api.regenerateMobilePassword();
+        if (res && res.config) { config = res.config; status = res.status || status; }
+        showTest('New password generated. Update it in Navic.', true);
+      } catch (err) {
+        showTest(err && err.message ? err.message : 'Could not regenerate password.', false);
+      }
+    });
+
+    els.addFolder.addEventListener('click', async () => {
+      try {
+        const res = await api.pickMobileFolders();
+        if (res && res.config) { config = res.config; status = res.status || status; }
+      } catch (_) {}
+      render();
+    });
+
+    document.querySelectorAll('#settings-nav .settings-nav-btn[data-cat="phone"]').forEach((btn) => {
+      btn.addEventListener('click', () => { refresh(); });
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) refresh();
+    });
+    setInterval(() => {
+      if (!config || !config.enabled) return;
+      api.getMobileStatus().then((st) => { status = st || status; render(); }).catch(() => {});
+    }, 8000);
+
+    refresh();
+  })();
 
   document.querySelectorAll('.settings-home-card').forEach(card => {
     card.addEventListener('click', () => {

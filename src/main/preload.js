@@ -120,4 +120,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   storageSaveSync: (data) => ipcRenderer.sendSync('storage-save-sync', data),
   readCacheFile: () => ipcRenderer.invoke('cache-read'),
   writeCacheFile: (data) => ipcRenderer.send('cache-write', data),
+
+  // Phone / Navic (Subsonic) server
+  getMobileConfig: () => ipcRenderer.invoke('mobile-get-config'),
+  setMobileConfig: (patch) => ipcRenderer.invoke('mobile-set-config', patch),
+  regenerateMobilePassword: () => ipcRenderer.invoke('mobile-regenerate-password'),
+  getMobileStatus: () => ipcRenderer.invoke('mobile-status'),
+  openMobileRemote: () => ipcRenderer.invoke('mobile-open-remote'),
+  addMobileFirewallRule: () => ipcRenderer.invoke('mobile-add-firewall-rule'),
+  pickMobileFolders: () => ipcRenderer.invoke('mobile-pick-folders'),
+  removeMobileFolder: (folder) => ipcRenderer.invoke('mobile-remove-folder', folder),
+  testMobileConnection: () => ipcRenderer.invoke('mobile-test-connection'),
+  onMobileCommand: (cb) => ipcRenderer.on('mobile-command', (e, data) => cb(data)),
+  onMobileStatus: (cb) => ipcRenderer.on('mobile-status', (e, data) => cb(data)),
 });

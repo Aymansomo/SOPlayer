@@ -1100,6 +1100,13 @@ body:not(.home-next-to-search) .bs-home-circle { display: none !important; }
                 </svg>
                 <span data-i18n>Integrations</span>
               </button>
+              <button class="settings-nav-btn" data-cat="phone">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="6" y="2" width="12" height="20" rx="2"/>
+                  <path d="M11 18h2"/>
+                </svg>
+                <span data-i18n>Phone</span>
+              </button>
               <button class="settings-nav-btn" data-cat="storage">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="22" x2="2" y1="12" y2="12"/>
@@ -2612,6 +2619,65 @@ body:not(.home-next-to-search) .bs-home-circle { display: none !important; }
             </div>
           </div>
 
+
+          <div class="settings-section" data-cat="phone">
+            <span class="settings-section-title">Phone &amp; Navic</span>
+
+            <div class="m3-group">
+              <div class="setting-item" id="card-phone-enabled">
+                <div class="setting-item-top" style="align-items: center; justify-content: space-between;">
+                  <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+                    <span class="setting-name" data-i18n-fixed>Phone access (Subsonic)</span>
+                    <span class="setting-hint" data-i18n-fixed>Let the Navic app on your phone connect to this PC over Wi-Fi.</span>
+                  </div>
+                  <button type="button" class="effect-switch-btn" id="btn-phone-enabled"><span class="thumb"></span></button>
+                </div>
+              </div>
+
+              <div class="setting-item" id="card-phone-status">
+                <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="phone-status-dot" style="width: 9px; height: 9px; border-radius: 50%; background: var(--md-sys-color-outline); flex-shrink: 0;"></span>
+                    <span class="setting-name" style="font-size: calc(14px * var(--font-scale, 1));" id="phone-status-text">Off</span>
+                  </div>
+                  <div id="phone-urls" style="font-family: monospace; font-size: calc(12px * var(--font-scale, 1)); color: var(--md-sys-color-outline); line-height: 1.7; word-break: break-all;">Not running</div>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="btn-outline-pill" id="btn-phone-copy-url" style="padding: 4px 12px; font-size: calc(12px * var(--font-scale, 1));">Copy URL</button>
+                    <button type="button" class="btn-outline-pill" id="btn-phone-open-remote" style="padding: 4px 12px; font-size: calc(12px * var(--font-scale, 1));">Open remote page</button>
+                    <button type="button" class="btn-outline-pill" id="btn-phone-test" style="padding: 4px 12px; font-size: calc(12px * var(--font-scale, 1));">Test server</button>
+                    <button type="button" class="btn-outline-pill" id="btn-phone-firewall" style="padding: 4px 12px; font-size: calc(12px * var(--font-scale, 1));">Add firewall rule</button>
+                  </div>
+                  <span id="phone-test-result" class="setting-hint" style="display: none;"></span>
+                </div>
+              </div>
+
+              <div class="setting-item" id="card-phone-login">
+                <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                  <span class="setting-name" data-i18n-fixed>Login for Navic</span>
+                  <div style="display: flex; gap: 16px; flex-wrap: wrap; font-family: monospace; font-size: calc(13px * var(--font-scale, 1));">
+                    <span>User: <span id="phone-username">riff</span></span>
+                    <span>Password: <span id="phone-password">—</span></span>
+                  </div>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="btn-outline-pill" id="btn-phone-copy-login" style="padding: 4px 12px; font-size: calc(12px * var(--font-scale, 1));">Copy login</button>
+                    <button type="button" class="btn-outline-pill" id="btn-phone-regen-password" style="padding: 4px 12px; font-size: calc(12px * var(--font-scale, 1));">New password</button>
+                  </div>
+                  <span class="setting-hint" data-i18n-fixed>In Navic: Servers → Add server → Server URL, username and password above.</span>
+                </div>
+              </div>
+
+              <div class="setting-item" id="card-phone-folders">
+                <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <span class="setting-name" data-i18n-fixed>Extra music folders</span>
+                    <button type="button" class="btn-outline-pill" id="btn-phone-add-folder" style="padding: 4px 12px; font-size: calc(12px * var(--font-scale, 1));">Add folder</button>
+                  </div>
+                  <span class="setting-hint" data-i18n-fixed>Riff's library, offline cache and Downloads folder are always included. Add any other folder you want on your phone.</span>
+                  <div id="phone-folders-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div class="settings-section" data-cat="storage">
             <span class="settings-section-title">Storage</span>

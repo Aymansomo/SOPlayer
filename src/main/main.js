@@ -52,6 +52,7 @@ const { getLauncherInfo, installLauncher } = require('./launcher');
 const { getSystemAudioOutputInfo } = require('../shared/audio-output');
 const { log, tail, LOG_DIR } = require('../shared/logger');
 const logger = { log, tail, LOG_DIR, error: (msg, err) => log('ERROR', `${msg}: ${err && err.message ? err.message : err}`) };
+const mobile = require('../server/mobile');
 
 try {
   if (process.stdout && typeof process.stdout.on === 'function') process.stdout.on('error', () => {});
@@ -375,6 +376,7 @@ function runGUI() {
 
   async function createWindow() {
     serverPort = await startServer(PORT);
+    try { await mobile.startIfEnabled(); } catch (_) {}
     const firstRun = !tutorialDone();
     const initialBounds = getResponsiveWindowBounds();
     const savedState = readWindowState();
@@ -515,6 +517,116 @@ function runGUI() {
   ipcMain.removeHandler('pick-local-files');
   ipcMain.removeHandler('pick-local-folder');
   ipcMain.removeHandler('rescan-local-metadata');
+
+  // ---------------------------------------------------------------------
+  // Phone / Navic (Subsonic) settings
+  // ---------------------------------------------------------------------
+  ipcMain.removeHandler('mobile-get-config');
+  ipcMain.removeHandler('mobile-set-config');
+  ipcMain.removeHandler('mobile-regenerate-password');
+  ipcMain.removeHandler('mobile-status');
+  ipcMain.removeHandler('mobile-open-remote');
+  ipcMain.removeHandler('mobile-add-firewall-rule');
+  ipcMain.removeHandler('mobile-pick-folders');
+  ipcMain.removeHandler('mobile-remove-folder');
+  ipcMain.removeHandler('mobile-test-connection');
+
+  ipcMain.handle('mobile-get-config', () => ({
+    config: mobile.getConfig(),
+    status: mobile.getStatus(),
+  }));
+
+  ipcMain.handle('mobile-set-config', async (event, patch) => {
+    const safePatch = patch && typeof patch === 'object' ? patch : {};
+    // The phone listener must never be started without credentials.
+    const status = await mobile.applyConfig(safePatch);
+    return { config: mobile.getConfig(), status };
+  });
+
+  ipcMain.handle('mobile-regenerate-password', () => ({
+    config: mobile.regeneratePassword(),
+    status: mobile.getStatus(),
+  }));
+
+  ipcMain.handle('mobile-status', () => mobile.getStatus());
+
+  ipcMain.handle('mobile-open-remote', async () => {
+    const status = mobile.getStatus();
+    const port = status.port || 6767;
+    const target = `http://127.0.0.1:${port}/remote`;
+    try { await shell.openExternal(target); return { ok: true, url: target }; } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('mobile-add-firewall-rule', async () => {
+    try {
+      const scriptPath = path.join(__dirname, '../../scripts/riff-mobile-firewall.ps1');
+      if (!fs.existsSync(scriptPath)) {
+        return { ok: false, error: 'firewall script not found' };
+      }
+      const port = mobile.getStatus().port || 6767;
+      const inner = `-NoProfile -ExecutionPolicy Bypass -File "${scriptPath}" -Port ${port}`;
+      const outer = `Start-Process -FilePath powershell.exe -Verb RunAs -ArgumentList '${inner.replace(/'/g, "''")}'`;
+      const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', outer], {
+        detached: true,
+        windowsHide: true,
+      });
+      child.on('error', () => {});
+      child.unref();
+      return { ok: true, launched: true, port };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('mobile-pick-folders', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Add music folders for your phone',
+      properties: ['openDirectory', 'multiSelections'],
+    });
+    if (result.canceled || !result.filePaths.length) return { canceled: true };
+    const cfg = mobile.getConfig();
+    const folders = Array.from(new Set([...(cfg.folders || []), ...result.filePaths]));
+    mobile.setFolders(folders);
+    return { canceled: false, config: mobile.getConfig(), status: mobile.getStatus() };
+  });
+
+  ipcMain.handle('mobile-remove-folder', (event, folder) => {
+    const cfg = mobile.getConfig();
+    const folders = (cfg.folders || []).filter((f) => f !== folder);
+    mobile.setFolders(folders);
+    return { config: mobile.getConfig(), status: mobile.getStatus() };
+  });
+
+  ipcMain.handle('mobile-test-connection', async () => {
+    const cfg = mobile.getConfig();
+    const port = cfg.port || 6767;
+    const started = Date.now();
+    return await new Promise((resolve) => {
+      const req = http.get({
+        host: '127.0.0.1',
+        port,
+        path: `/rest/ping.view?u=${encodeURIComponent(cfg.username)}&p=enc:${Buffer.from(cfg.password, 'utf8').toString('hex')}&v=1.16.1&c=Riff&f=json`,
+        timeout: 4000,
+      }, (res) => {
+        let body = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => { body += chunk; });
+        res.on('end', () => {
+          let ok = false;
+          try {
+            const parsed = JSON.parse(body);
+            ok = parsed && parsed['subsonic-response'] && parsed['subsonic-response'].status === 'ok';
+          } catch (_) {}
+          resolve({ ok, statusCode: res.statusCode, pingMs: Date.now() - started, body: body.slice(0, 400) });
+        });
+      });
+      req.on('timeout', () => { req.destroy(new Error('timeout')); });
+      req.on('error', (err) => resolve({ ok: false, error: err.message, pingMs: Date.now() - started }));
+    });
+  });
+
 
   ipcMain.on('window-minimize', () => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize();
@@ -2512,6 +2624,7 @@ function runGUI() {
 
       app.on('before-quit', () => {
         isQuitting = true;
+        try { mobile.stop(); } catch (_) {}
       });
 
       app.whenReady().then(() => {
