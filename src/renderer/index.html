@@ -2666,13 +2666,24 @@ body:not(.home-next-to-search) .bs-home-circle { display: none !important; }
                 </div>
               </div>
 
+              <div class="setting-item" id="card-phone-library">
+                <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <span class="setting-name" data-i18n-fixed>Music library</span>
+                    <button type="button" class="btn-outline-pill" id="btn-phone-scan" style="padding: 4px 12px; font-size: calc(12px * var(--font-scale, 1));">Rescan library</button>
+                  </div>
+                  <span class="setting-hint" id="phone-library-status">No music indexed yet.</span>
+                  <span class="setting-hint" data-i18n-fixed>Songs are read only from the music folders below. No other Riff folder is included.</span>
+                </div>
+              </div>
+
               <div class="setting-item" id="card-phone-folders">
                 <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
                   <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                    <span class="setting-name" data-i18n-fixed>Extra music folders</span>
+                    <span class="setting-name" data-i18n-fixed>Music folders</span>
                     <button type="button" class="btn-outline-pill" id="btn-phone-add-folder" style="padding: 4px 12px; font-size: calc(12px * var(--font-scale, 1));">Add folder</button>
                   </div>
-                  <span class="setting-hint" data-i18n-fixed>Riff's library, offline cache and Downloads folder are always included. Add any other folder you want on your phone.</span>
+                  <span class="setting-hint" data-i18n-fixed>Only these folders are scanned for your phone. The default is the project music folder.</span>
                   <div id="phone-folders-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
                 </div>
               </div>

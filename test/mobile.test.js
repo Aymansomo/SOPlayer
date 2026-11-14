@@ -13,11 +13,18 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'riff-mobile-test-'));
 process.env.RIFF_DATA_DIR = tmpDir;
 
 const config = require('../src/server/mobile/config');
+const library = require('../src/server/mobile/library');
 const mobile = require('../src/server/mobile/index');
 
-function get(port, urlPath) {
+function get(port, urlPath, options = {}) {
   return new Promise((resolve, reject) => {
-    const req = http.get({ host: '127.0.0.1', port, path: urlPath, timeout: 5000 }, (res) => {
+    const req = http.get({
+      host: '127.0.0.1',
+      port,
+      path: urlPath,
+      timeout: 15000,
+      headers: options.headers || {},
+    }, (res) => {
       let body = '';
       res.setEncoding('utf8');
       res.on('data', (chunk) => { body += chunk; });
@@ -30,9 +37,46 @@ function get(port, urlPath) {
 
 const md5 = (value) => crypto.createHash('md5').update(value).digest('hex');
 
-test('Subsonic handshake over the LAN listener', async (t) => {
+/** Write a tiny valid PCM WAV so the scanner has something real to index. */
+function writeWav(file, seconds = 0.2) {
+  const sampleRate = 8000;
+  const channels = 1;
+  const bits = 16;
+  const samples = Math.floor(sampleRate * seconds);
+  const dataSize = samples * 2;
+  const buf = Buffer.alloc(44 + dataSize);
+  buf.write('RIFF', 0);
+  buf.writeUInt32LE(36 + dataSize, 4);
+  buf.write('WAVE', 8);
+  buf.write('fmt ', 12);
+  buf.writeUInt32LE(16, 16);
+  buf.writeUInt16LE(1, 20);
+  buf.writeUInt16LE(channels, 22);
+  buf.writeUInt32LE(sampleRate, 24);
+  buf.writeUInt32LE(sampleRate * channels * (bits / 8), 28);
+  buf.writeUInt16LE(channels * (bits / 8), 32);
+  buf.writeUInt16LE(bits, 34);
+  buf.write('data', 36);
+  buf.writeUInt32LE(dataSize, 40);
+  for (let i = 0; i < samples; i++) {
+    const value = Math.round(Math.sin((2 * Math.PI * 440 * i) / sampleRate) * 3000);
+    buf.writeInt16LE(value, 44 + i * 2);
+  }
+  fs.writeFileSync(file, buf);
+}
+
+test('Subsonic handshake and library over the LAN listener', async (t) => {
   const port = 20000 + Math.floor(Math.random() * 30000);
-  const cfg = config.update({ enabled: true, port, bindHost: '127.0.0.1' });
+  const musicDir = path.join(tmpDir, 'music');
+  fs.mkdirSync(musicDir, { recursive: true });
+  writeWav(path.join(musicDir, 'Test Artist - Test Song.wav'));
+
+  const cfg = config.update({
+    enabled: true,
+    port,
+    bindHost: '127.0.0.1',
+    folders: [musicDir],
+  });
 
   await mobile.start();
   t.after(async () => {
@@ -58,7 +102,68 @@ test('Subsonic handshake over the LAN listener', async (t) => {
   assert.strictEqual(license.license.valid, true);
 
   const folders = JSON.parse((await get(port, `/rest/getMusicFolders.view?${auth}&f=json`)).body)['subsonic-response'];
-  assert.strictEqual(folders.musicFolders.musicFolder[0].name, 'Riff');
+  assert.ok(Array.isArray(folders.musicFolders.musicFolder));
+  assert.strictEqual(folders.musicFolders.musicFolder.length, 1);
+
+  // Wait for the library index (start() kicks it off in the background).
+  await library.startScan();
+  assert.strictEqual(library.getScanStatus().scanning, false);
+  assert.strictEqual(library.getScanStatus().songs, 1);
+
+  const scan = JSON.parse((await get(port, `/rest/getScanStatus.view?${auth}&f=json`)).body)['subsonic-response'];
+  assert.strictEqual(scan.scanStatus.scanning, false);
+  assert.strictEqual(scan.scanStatus.count, 1);
+
+  const artists = JSON.parse((await get(port, `/rest/getArtists.view?${auth}&f=json`)).body)['subsonic-response'];
+  const artistList = artists.artists.index.flatMap((index) => index.artist);
+  assert.strictEqual(artistList.length, 1);
+  assert.strictEqual(artistList[0].name, 'Test Artist');
+
+  const albums = JSON.parse(
+    (await get(port, `/rest/getAlbumList2.view?type=alphabeticalByName&size=500&${auth}&f=json`)).body
+  )['subsonic-response'];
+  assert.strictEqual(albums.albumList2.album.length, 1);
+  const albumSummary = albums.albumList2.album[0];
+  assert.strictEqual(albumSummary.name, 'Test Song');
+  assert.strictEqual(albumSummary.songCount, 1);
+
+  const album = JSON.parse(
+    (await get(port, `/rest/getAlbum.view?id=${albumSummary.id}&${auth}&f=json`)).body
+  )['subsonic-response'].album;
+  assert.strictEqual(album.song.length, 1);
+  assert.strictEqual(album.song[0].title, 'Test Song');
+  assert.strictEqual(album.song[0].artist, 'Test Artist');
+
+  const song = JSON.parse(
+    (await get(port, `/rest/getSong.view?id=${album.song[0].id}&${auth}&f=json`)).body
+  )['subsonic-response'].song;
+  assert.strictEqual(song.title, 'Test Song');
+  assert.match(song.contentType, /audio\//);
+
+  const search = JSON.parse(
+    (await get(port, `/rest/search3.view?query=Test&${auth}&f=json`)).body
+  )['subsonic-response'].searchResult3;
+  assert.strictEqual(search.song.length, 1);
+  assert.strictEqual(search.song[0].id, song.id);
+
+  const xmlAlbums = await get(port, `/rest/getAlbumList2.view?type=alphabeticalByName&size=10&${auth}&f=xml`);
+  assert.match(xmlAlbums.body, /<albumList2>/);
+  assert.match(xmlAlbums.body, /<album /);
+
+  const cover = await get(port, `/rest/getCoverArt.view?id=${albumSummary.id}&${auth}`);
+  assert.strictEqual(cover.status, 200);
+  assert.match(String(cover.headers['content-type']), /^image\//);
+
+  const ranged = await get(port, `/rest/stream.view?id=${song.id}&${auth}`, {
+    headers: { Range: 'bytes=0-99' },
+  });
+  assert.strictEqual(ranged.status, 206);
+  assert.strictEqual(Number(ranged.headers['content-length']), 100);
+  assert.match(String(ranged.headers['content-range']), /^bytes 0-99\//);
+
+  const download = await get(port, `/rest/download.view?id=${song.id}&${auth}`);
+  assert.strictEqual(download.status, 200);
+  assert.match(String(download.headers['content-disposition']), /^attachment;/);
 
   const bad = await get(port, `/rest/ping.view?u=${cfg.username}&t=deadbeef&s=x&v=1.16.1&c=test&f=json`);
   assert.strictEqual(bad.status, 200, 'Subsonic errors must still return HTTP 200');

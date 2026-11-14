@@ -16,6 +16,7 @@ const path = require('path');
 const fs = require('fs');
 
 const config = require('./config');
+const library = require('./library');
 const { handleSubsonic, SERVER_VERSION } = require('./subsonic');
 const { clientIp } = require('./auth');
 
@@ -52,6 +53,7 @@ function getStatus() {
     startedAt,
     uptimeMs: running && startedAt ? Date.now() - startedAt : 0,
     version: SERVER_VERSION,
+    library: library.getScanStatus(),
     error: lastError || '',
   };
 }
@@ -241,6 +243,11 @@ function start() {
   const cfg = config.get();
   if (!cfg.port) return Promise.reject(new Error('invalid port'));
 
+  // Load the cached index and refresh it in the background if needed.
+  try { library.init(); } catch (err) {
+    console.warn('[mobile] library init failed:', err && err.message);
+  }
+
   return new Promise((resolve, reject) => {
     const instance = http.createServer(handleRequest);
     let settled = false;
@@ -344,9 +351,14 @@ async function applyConfig(patch) {
     before.enabled !== after.enabled ||
     before.port !== after.port ||
     before.bindHost !== after.bindHost;
+  const foldersChanged =
+    JSON.stringify(before.folders || []) !== JSON.stringify(after.folders || []);
 
   if (needsRestart) {
     await restart();
+  }
+  if (foldersChanged) {
+    library.startScan().catch(() => {});
   }
   return getStatus();
 }
@@ -360,7 +372,13 @@ module.exports = {
   getStatus,
   getConfig: () => config.publicConfig(),
   regeneratePassword: () => config.regeneratePassword(),
-  setFolders: (folders) => config.setFolders(folders),
+  setFolders: (folders) => {
+    const cfg = config.setFolders(folders);
+    library.startScan().catch(() => {});
+    return cfg;
+  },
+  scanLibrary: () => library.startScan(),
+  getLibraryStatus: () => library.getScanStatus(),
   handleRequest,
   lanUrls: config.lanUrls,
 };

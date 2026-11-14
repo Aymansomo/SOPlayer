@@ -3,9 +3,11 @@
 Riff can act as a small **Subsonic / OpenSubsonic server** on your local network so
 the Android app [Navic](https://navic.app) can browse and stream your music.
 
-This is an early implementation. The connection handshake works today; library
-browsing, streaming, downloads and two‑way likes/playlists are being added in
-the next steps (see [Roadmap](#roadmap)).
+Browsing, streaming, downloads and cover art work today. Two‑way
+likes/playlists, online songs and remote control are the next steps (see
+[Roadmap](#roadmap)).
+
+The full technical overview lives in [PROJECT.md](PROJECT.md).
 
 ---
 
@@ -24,6 +26,27 @@ the next steps (see [Roadmap](#roadmap)).
    - Leave the rest at default.
 
 Tap **Test server** in Riff settings to verify the listener answers.
+
+---
+
+## Music library
+
+Riff indexes **only the music folders listed in Settings → Phone & Navic**.
+Nothing else from Riff's data folder is exposed.
+
+- The default is the project music folder:
+  `E:\ayman\Development\My_progicte\ME\Music_app\project\music`
+- Add your songs there yourself, then press **Rescan library** in Riff.
+- Scanning is incremental: only new or changed files are read with `ffprobe`.
+- Tags (title, artist, album, track, year, genre) are used when present;
+  filenames are the fallback.
+- Cover art comes from the file's embedded image, or `cover.jpg` /
+  `folder.jpg` in the album folder, otherwise Riff's icon is used.
+- The cached index is `mobile-library.json`; extracted covers are in
+  `mobile-covers/`.
+
+Supported formats: `mp3`, `m4a`, `m4b`, `aac`, `flac`, `ogg`, `oga`, `opus`,
+`wav`, `wma`, `aiff`, `aif`, `mp4`, `webm`.
 
 ---
 
@@ -49,9 +72,10 @@ If you change the port, also add a firewall rule for the new port.
 
 | File / folder | Purpose |
 |---|---|
-| `mobile.json` | Phone-access settings, username, password, API key, extra folders |
+| `mobile.json` | Phone-access settings, username, password, API key, music folders |
+| `mobile-library.json` | Cached song / album / artist index |
+| `mobile-covers/` | Extracted album covers (one JPEG per album) |
 | `mobile-collection.json` | Two‑way favourites / playlists (added in a later step) |
-| `mobile-tags.json` | Cached audio tags for indexed files (added in a later step) |
 
 These live in Riff's **data folder**, the same place as `metadata.json`,
 `library.json`, `tracks/` and `thumbnails/`.
@@ -149,6 +173,10 @@ Wi‑Fi).
 | “Wrong username or password” | Copy credentials again; if you used **New password**, update Navic |
 | Nothing happens after enabling | Look at Riff’s logs; the port may be taken by another app |
 | Phone can’t see the PC after sleep | Windows may have disconnected Wi‑Fi; wake the PC and retry |
+| Library is empty | Add songs to the music folder and press **Rescan library** |
+| Missing songs | Unsupported extension, or the file is inside a hidden folder |
+| No cover art | No embedded image and no `cover.jpg`; Riff's icon is used |
+| Wrong duration / tags | The file has no tags; Riff falls back to the filename |
 
 ---
 
@@ -157,9 +185,10 @@ Wi‑Fi).
 - [x] Phase 0 — persistent config, LAN listener, Subsonic auth, `ping`,
   `getLicense`, `getMusicFolders`, `getOpenSubsonicExtensions`, settings UI,
   firewall helper
-- [ ] Phase 1 — library index (local library, cache, Downloads, extra folders),
-  artists / albums / songs, search, cover art
-- [ ] Phase 2 — `stream` + `download` with HTTP Range, on‑demand download
+- [x] Phase 1 — music-folder library index, artists / albums / songs, genres,
+  search, cover art, scan status, local `stream` + `download` with HTTP Range
+- [ ] Phase 2 — streaming edge cases (transcoding when a client refuses a
+  format), download resilience, cache maintenance
 - [ ] Phase 3 — two‑way favourites, playlists, scrobbles
 - [ ] Phase 4 — online YouTube/SoundCloud songs via server-side resolve
 - [ ] Phase 5 — `/remote` page: play/pause, next/prev, seek, volume, like
@@ -170,6 +199,9 @@ Wi‑Fi).
 ## باختصار بالعربي
 
 - شغّل Riff ثم اذهب إلى **Settings → Phone & Navic** وفعّل **Phone access**.
+- ضع أغانيك في مجلد
+  `E:\ayman\Development\My_progicte\ME\Music_app\project\music` فقط، ثم اضغط
+  **Rescan library**. لا يقوم Riff بفهرسة أي مجلد آخر.
 - افتح تطبيق **Navic** في الهاتف وأضف سيرفراً جديداً بالعنوان والمستخدم وكلمة
   المرور الظاهرين في الإعدادات.
 - المنفذ **67676 غير صالح** لأن أقصى رقم منفذ هو 65535، لذلك نستخدم **6767**.

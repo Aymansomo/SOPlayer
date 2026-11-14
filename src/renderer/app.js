@@ -29823,6 +29823,8 @@ function bindCoverHoldZoom(wrapEl) {
       regen: document.getElementById('btn-phone-regen-password'),
       folders: document.getElementById('phone-folders-list'),
       addFolder: document.getElementById('btn-phone-add-folder'),
+      libraryStatus: document.getElementById('phone-library-status'),
+      scan: document.getElementById('btn-phone-scan'),
     };
 
     let config = null;
@@ -29909,6 +29911,24 @@ function bindCoverHoldZoom(wrapEl) {
         els.testResult.style.color = testOk ? '#4ade80' : '#f87171';
       } else {
         els.testResult.style.display = 'none';
+      }
+
+      const lib = (status && status.library) || null;
+      if (els.libraryStatus) {
+        if (!lib) {
+          els.libraryStatus.textContent = 'Library status unavailable.';
+        } else if (lib.scanning) {
+          els.libraryStatus.textContent = `Scanning… ${lib.count || 0} files found so far.`;
+        } else if (lib.songs) {
+          const when = lib.lastScan ? new Date(lib.lastScan) : null;
+          const time = when && !Number.isNaN(when.getTime()) ? ` · last scan ${when.toLocaleTimeString()}` : '';
+          els.libraryStatus.textContent = `${lib.songs} songs · ${lib.albums || 0} albums · ${lib.artists || 0} artists${time}`;
+        } else if (lib.folderCount) {
+          els.libraryStatus.textContent = 'No audio files found in the music folders yet.';
+        } else {
+          els.libraryStatus.textContent = 'No music folder configured. Add one below.';
+        }
+        if (lib && lib.error) els.libraryStatus.textContent += ` — ${lib.error}`;
       }
 
       const folders = Array.isArray(config.folders) ? config.folders : [];
@@ -30031,6 +30051,29 @@ function bindCoverHoldZoom(wrapEl) {
       } catch (_) {}
       render();
     });
+
+    if (els.scan) {
+      els.scan.addEventListener('click', async () => {
+        if (busy) return;
+        busy = true;
+        showTest('Scanning music folders…', true);
+        try {
+          const st = await api.scanMobileLibrary();
+          status = st || status;
+          // Poll quickly while ffprobe works through the files.
+          for (let i = 0; i < 300; i++) {
+            if (!status || !status.library || !status.library.scanning) break;
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            try { status = (await api.getMobileStatus()) || status; } catch (_) {}
+            render();
+          }
+        } catch (err) {
+          showTest(err && err.message ? err.message : 'Could not scan the library.', false);
+        }
+        busy = false;
+        render();
+      });
+    }
 
     document.querySelectorAll('#settings-nav .settings-nav-btn[data-cat="phone"]').forEach((btn) => {
       btn.addEventListener('click', () => { refresh(); });

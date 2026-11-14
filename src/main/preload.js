@@ -131,6 +131,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pickMobileFolders: () => ipcRenderer.invoke('mobile-pick-folders'),
   removeMobileFolder: (folder) => ipcRenderer.invoke('mobile-remove-folder', folder),
   testMobileConnection: () => ipcRenderer.invoke('mobile-test-connection'),
+  scanMobileLibrary: () => ipcRenderer.invoke('mobile-scan-library'),
   onMobileCommand: (cb) => ipcRenderer.on('mobile-command', (e, data) => cb(data)),
   onMobileStatus: (cb) => ipcRenderer.on('mobile-status', (e, data) => cb(data)),
 });

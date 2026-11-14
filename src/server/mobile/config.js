@@ -17,6 +17,31 @@ const DEFAULT_PORT = 6767;
 const DEFAULT_USERNAME = 'riff';
 const DEFAULT_BIND_HOST = '0.0.0.0';
 
+/**
+ * Candidate folders used exactly once, when the config has never had a folder
+ * list. The user's project keeps music in `Music_app/project/music`; a normal
+ * Riff install may only have the managed `library/` folder.
+ */
+function defaultMusicFolders() {
+  const candidates = [
+    path.resolve(__dirname, '../../../../music'),
+    path.resolve(DATA_DIR, '..', '..', 'project', 'music'),
+    path.join(DATA_DIR, 'library'),
+  ];
+  const out = [];
+  const seen = new Set();
+  for (const candidate of candidates) {
+    let stat;
+    try { stat = fs.statSync(candidate); } catch (_) { continue; }
+    if (!stat.isDirectory()) continue;
+    const key = path.resolve(candidate).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(path.resolve(candidate));
+  }
+  return out;
+}
+
 function configPath() {
   return path.join(DATA_DIR, 'mobile.json');
 }
@@ -38,9 +63,11 @@ function defaults() {
     username: DEFAULT_USERNAME,
     password: generatePassword(),
     apiKey: generateApiKey(),
-    // Extra folders the user adds explicitly. Standard Riff folders
-    // (library/, tracks/, Downloads) are always scanned on top of these.
+    // Music folders scanned for the phone library. This is the ONLY source of
+    // songs; it is seeded once with `project/music` (or `library/`) and then
+    // controlled by the user.
     folders: [],
+    foldersSeeded: false,
     remoteEnabled: true,
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -95,7 +122,12 @@ function sanitize(input, base) {
       });
   }
 
+  if (typeof input.foldersSeeded === 'boolean') out.foldersSeeded = input.foldersSeeded;
+
   if (typeof input.remoteEnabled === 'boolean') out.remoteEnabled = input.remoteEnabled;
+
+  const createdAt = Number(input.createdAt);
+  if (Number.isFinite(createdAt) && createdAt > 0) out.createdAt = createdAt;
 
   out.updatedAt = Date.now();
   return out;
@@ -146,6 +178,17 @@ function load() {
   // hand-edited or created by an older version.
   if (!cached.password) cached.password = generatePassword();
   if (!cached.apiKey) cached.apiKey = generateApiKey();
+
+  // One-time folder seed. Existing configs (like the user's) already contain
+  // the project music folder, so this mainly helps fresh installs.
+  if (!cached.foldersSeeded) {
+    if (!Array.isArray(cached.folders) || !cached.folders.length) {
+      const seed = defaultMusicFolders();
+      if (seed.length) cached.folders = seed;
+    }
+    cached.foldersSeeded = true;
+    writeToDisk(cached);
+  }
   return cached;
 }
 
@@ -182,6 +225,7 @@ function publicConfig() {
     password: cfg.password,
     apiKey: cfg.apiKey,
     folders: cfg.folders.slice(),
+    foldersSeeded: !!cfg.foldersSeeded,
     remoteEnabled: cfg.remoteEnabled,
     updatedAt: cfg.updatedAt,
     configPath: configPath(),
@@ -233,6 +277,7 @@ function lanUrls(cfg) {
 module.exports = {
   DEFAULT_PORT,
   DEFAULT_USERNAME,
+  defaultMusicFolders,
   configPath,
   get,
   update,

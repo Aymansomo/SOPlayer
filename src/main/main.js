@@ -530,6 +530,7 @@ function runGUI() {
   ipcMain.removeHandler('mobile-pick-folders');
   ipcMain.removeHandler('mobile-remove-folder');
   ipcMain.removeHandler('mobile-test-connection');
+  ipcMain.removeHandler('mobile-scan-library');
 
   ipcMain.handle('mobile-get-config', () => ({
     config: mobile.getConfig(),
@@ -549,6 +550,12 @@ function runGUI() {
   }));
 
   ipcMain.handle('mobile-status', () => mobile.getStatus());
+
+  ipcMain.handle('mobile-scan-library', () => {
+    // Start in the background; the renderer polls mobile-status for progress.
+    mobile.scanLibrary().catch(() => {});
+    return mobile.getStatus();
+  });
 
   ipcMain.handle('mobile-open-remote', async () => {
     const status = mobile.getStatus();
