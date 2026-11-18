@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -26,9 +29,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
+import org.koin.compose.koinInject
 import paige.navic.R
 import paige.navic.di.LocalNavStack
 import paige.navic.di.LocalSharedTransitionScope
+import paige.navic.domain.manager.runtime.PlaylistArtworkManager
 import paige.navic.domain.model.DomainAlbum
 import paige.navic.domain.model.DomainPlaylist
 import paige.navic.domain.model.DomainSongCollection
@@ -44,10 +49,17 @@ fun CollectionDetailScreenHeadingRow(
 	titleAlpha: Float
 ) {
 	val backStack = LocalNavStack.current
+	val artworkManager = koinInject<PlaylistArtworkManager>()
+	val artworkRevision by artworkManager.revision.collectAsState()
+	val playlistId = (collection as? DomainPlaylist)?.id
+	val localArtwork = remember(playlistId, artworkRevision) {
+		playlistId?.let { artworkManager.getArtwork(it) }
+	}
 	val sharedTransitionKey = "${tab}-${collection.id}-cover"
 	with(LocalSharedTransitionScope.current) {
 		CoverArt(
 			coverArtId = collection.coverArtId,
+			localArtwork = localArtwork,
 			contentDescription = collection.name,
 			modifier = Modifier
 				.widthIn(0.dp, 420.dp)
@@ -65,7 +77,7 @@ fun CollectionDetailScreenHeadingRow(
 				)
 				.alpha(titleAlpha),
 			crossfadeMs = 0,
-			onClick = collection.coverArtId?.let { coverArtId ->
+			onClick = if (localArtwork != null) null else collection.coverArtId?.let { coverArtId ->
 				dropUnlessResumed {
 					backStack.add(Screen.ImageView(
 						coverArtId = coverArtId,

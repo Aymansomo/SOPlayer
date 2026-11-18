@@ -55,6 +55,7 @@ import paige.navic.ui.component.common.ErrorBox
 import paige.navic.ui.core.UiState
 import paige.navic.ui.util.EmphasizedDecelerateEasing
 import paige.navic.ui.util.shimmerLoading
+import java.io.File
 
 @Composable
 fun ArtGrid(
@@ -102,6 +103,7 @@ fun ArtGridItem(
 	onClick: () -> Unit,
 	onLongClick: (() -> Unit)? = null,
 	coverArtId: String?,
+	localArtwork: File? = null,
 	title: String,
 	subtitle: String? = null,
 	playCount: Int? = null,
@@ -129,6 +131,7 @@ fun ArtGridItem(
 		) {
 			CoverArt(
 				coverArtId = coverArtId,
+				localArtwork = localArtwork,
 				contentDescription = title,
 				modifier = Modifier
 					.fillMaxWidth()

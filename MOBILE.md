@@ -228,7 +228,10 @@ up in Riff on the PC, and what you star or create in Riff shows up in Navic.
 - Play counts are recorded from Navic's scrobbles (`getAlbumList2?type=frequent`
   is ordered by plays).
 - Playlists show a 2×2 cover made from the artwork of their first four songs,
-  like the playlist cards in Riff on the PC.
+  like the playlist cards in Riff on the PC. Long-press a playlist (or open its
+  menu) on the phone to *Change cover image* from your photos; the picture is
+  kept on the phone — the Subsonic API has nowhere to store a playlist cover —
+  and *Reset cover image* goes back to the mosaic.
 - The home screen starts with **For you** and **Trending now**. *For you* and
   **Daily Mix 1-4** are recommendations, not a re-shuffle of your own music: the
   PC's recommendation engine picks new online songs that fit the artists you

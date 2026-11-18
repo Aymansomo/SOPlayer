@@ -6,6 +6,9 @@
 
 package paige.navic.ui.component.sheet
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -40,10 +44,12 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import paige.navic.R
 import paige.navic.database.entity.DownloadStatus
+import paige.navic.domain.manager.runtime.PlaylistArtworkManager
 import paige.navic.domain.manager.runtime.PreferenceManager
 import paige.navic.domain.manager.session.DownloadManager
 import paige.navic.domain.manager.session.SessionManager
 import paige.navic.domain.manager.session.canUserShare
+import paige.navic.domain.manager.ui.SnackBarManager
 import paige.navic.domain.model.DomainAlbum
 import paige.navic.domain.model.DomainAlbumInfo
 import paige.navic.domain.model.DomainPlaylist
@@ -63,6 +69,7 @@ import paige.navic.ui.icons.outlined.Close
 import paige.navic.ui.icons.outlined.Delete
 import paige.navic.ui.icons.outlined.Download
 import paige.navic.ui.icons.outlined.DownloadOff
+import paige.navic.ui.icons.outlined.Edit
 import paige.navic.ui.icons.outlined.PlaylistAdd
 import paige.navic.ui.icons.outlined.PlaylistRemove
 import paige.navic.ui.icons.outlined.Queue
@@ -104,6 +111,28 @@ fun CollectionSheet(
 	var linkToOpen by rememberSaveable { mutableStateOf<String?>(null) }
 	val downloadDeletionHandler = rememberDownloadDeletionHandler()
 
+	val artworkManager = koinInject<PlaylistArtworkManager>()
+	val snackBarManager = koinInject<SnackBarManager>()
+	val artworkRevision by artworkManager.revision.collectAsState()
+	val playlistId = (collection as? DomainPlaylist)?.id
+	val localArtwork = remember(playlistId, artworkRevision) {
+		playlistId?.let { artworkManager.getArtwork(it) }
+	}
+	val artworkPicker = rememberLauncherForActivityResult(
+		ActivityResultContracts.PickVisualMedia()
+	) { uri ->
+		val id = playlistId
+		if (uri != null && id != null) {
+			scope.launch {
+				if (artworkManager.setArtwork(id, uri)) {
+					onDismissRequest()
+				} else {
+					snackBarManager.notify(R.string.error_save_cover_image)
+				}
+			}
+		}
+	}
+
 	ModalBottomSheet(
 		onDismissRequest = onDismissRequest,
 		dragHandle = null,
@@ -122,6 +151,7 @@ fun CollectionSheet(
 			leadingContent = {
 				CoverArt(
 					coverArtId = collection.coverArtId,
+					localArtwork = localArtwork,
 					modifier = Modifier.size(50.dp),
 					shape = preferenceManager.coverArtShape.decreasedShape
 				)
@@ -153,6 +183,35 @@ fun CollectionSheet(
 		HorizontalDivider(Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
 
 		Column(Modifier.verticalScroll(rememberScrollState())) {
+			// Playlist cover images are stored on the device, so they are
+			// managed from here rather than from the server.
+			if (playlistId != null) {
+				ListItem(
+					content = { Text(stringResource(R.string.action_change_cover_image)) },
+					leadingContent = { Icon(Icons.Outlined.Edit, null) },
+					onClick = {
+						artworkPicker.launch(
+							PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+						)
+					},
+					colors = colors,
+					contentPadding = contentPadding
+				)
+
+				if (localArtwork != null) {
+					ListItem(
+						content = { Text(stringResource(R.string.action_reset_cover_image)) },
+						leadingContent = { Icon(Icons.Outlined.Close, null) },
+						onClick = {
+							artworkManager.clearArtwork(playlistId)
+							onDismissRequest()
+						},
+						colors = colors,
+						contentPadding = contentPadding
+					)
+				}
+			}
+
 			if (albumInfo?.lastFmUrl != null) {
 				ListItem(
 					content = { Text(stringResource(R.string.action_view_on_lastfm)) },

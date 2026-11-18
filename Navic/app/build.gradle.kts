@@ -41,8 +41,8 @@ android {
 		applicationId = "paige.navic"
 		minSdk = libs.versions.android.minSdk.get().toInt()
 		targetSdk = libs.versions.android.targetSdk.get().toInt()
-		versionCode = 62
-		versionName = "v1.0.0-beta03"
+		versionCode = 63
+		versionName = "v1.0.0-beta04"
 		multiDexEnabled = true
 
 		ndk {

@@ -22,6 +22,7 @@ import paige.navic.domain.manager.playback.StreamCacheManager
 import paige.navic.domain.manager.runtime.NotificationManager
 import paige.navic.domain.manager.runtime.PermissionManager
 import paige.navic.domain.manager.runtime.PreferenceManager
+import paige.navic.domain.manager.runtime.PlaylistArtworkManager
 import paige.navic.domain.manager.runtime.StorageManager
 import paige.navic.domain.manager.session.connectivity.ConnectivityManager
 import paige.navic.domain.manager.session.connectivity.ReachabilityFlow
@@ -55,6 +56,7 @@ val managerModule = module {
 	singleOf(::LoginManager)
 	singleOf(::NotificationManager)
 	singleOf(::PermissionManager)
+	singleOf(::PlaylistArtworkManager)
 	singleOf(::PreferenceManager)
 	singleOf(::ReachabilityFlow)
 	singleOf(::SessionManager)

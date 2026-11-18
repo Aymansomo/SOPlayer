@@ -126,6 +126,13 @@ tiny status route.
 
 ### Playlist detail (sort, filter, auto-download)
 
+- **Custom playlist covers**: the playlist sheet has *Change cover image* and
+  *Reset cover image*. Subsonic has no per-playlist cover, so the chosen picture
+  is copied into `files/playlist-artwork/<hash>.img` by `PlaylistArtworkManager`
+  and drawn through `CoverArt(localArtwork = …)` in the playlist grid, list row,
+  detail heading and sheet header; resetting deletes the file and the server
+  mosaic comes back.
+
 - **Sort/filter sheet** on the playlist screen (`DomainPlaylistSongSort`,
   `PlaylistSongQueryBuilder`): playlist order, recently added (last song added
   first), title, artist, album, duration, plus ascending/descending and the

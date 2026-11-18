@@ -32,6 +32,7 @@ import org.koin.compose.koinInject
 import paige.navic.domain.manager.runtime.PreferenceManager
 import paige.navic.domain.manager.session.SessionManager
 import coil3.compose.LocalPlatformContext as LocalCoilPlatformContext
+import java.io.File
 
 @Composable
 fun CoverArt(
@@ -45,7 +46,9 @@ fun CoverArt(
 	crossfadeMs: Int = 500,
 	shadowElevation: Dp = 0.dp,
 	interactionSource: MutableInteractionSource? = null,
-	shape: Shape? = null
+	shape: Shape? = null,
+	/** Image stored on the device that is shown instead of the server art. */
+	localArtwork: File? = null
 ) {
 	val coilPlatformContext = LocalCoilPlatformContext.current
 
@@ -59,17 +62,28 @@ fun CoverArt(
 		preferenceManager.artistImageShape.shape
 	}
 
-	val model = remember(coverArtId) {
-		ImageRequest.Builder(coilPlatformContext)
-			.data(coverArtId?.let { sessionManager.getCoverArtUrl(it) })
-			.memoryCacheKey(coverArtId)
-			// Bumped so art that was cached while the server answered the app icon
-			// for missing artist/album images is fetched again.
-			.diskCacheKey("$coverArtId#2")
-			.diskCachePolicy(CachePolicy.ENABLED)
-			.memoryCachePolicy(CachePolicy.ENABLED)
-			.crossfade(crossfadeMs)
-			.build()
+	val model = remember(coverArtId, localArtwork) {
+		if (localArtwork != null) {
+			ImageRequest.Builder(coilPlatformContext)
+				.data(localArtwork)
+				// The file is replaced in place when a new image is picked.
+				.memoryCacheKey("${localArtwork.absolutePath}#${localArtwork.lastModified()}")
+				.diskCachePolicy(CachePolicy.DISABLED)
+				.memoryCachePolicy(CachePolicy.ENABLED)
+				.crossfade(crossfadeMs)
+				.build()
+		} else {
+			ImageRequest.Builder(coilPlatformContext)
+				.data(coverArtId?.let { sessionManager.getCoverArtUrl(it) })
+				.memoryCacheKey(coverArtId)
+				// Bumped so art that was cached while the server answered the app icon
+				// for missing artist/album images is fetched again.
+				.diskCacheKey("$coverArtId#2")
+				.diskCachePolicy(CachePolicy.ENABLED)
+				.memoryCachePolicy(CachePolicy.ENABLED)
+				.crossfade(crossfadeMs)
+				.build()
+		}
 	}
 
 	val commonModifier = modifier
@@ -92,12 +106,13 @@ fun CoverArt(
 			else Modifier
 		)
 
-	if (coverArtId == null) return Box(commonModifier)
+	if (coverArtId == null && localArtwork == null) return Box(commonModifier)
 	AsyncImage(
 		model = model,
 		imageLoader = imageLoader,
 		contentDescription = contentDescription,
 		modifier = commonModifier,
-		contentScale = contentScale
+		// A picture the user chose is not necessarily square.
+		contentScale = if (localArtwork != null) ContentScale.Crop else contentScale
 	)
 }
