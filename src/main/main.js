@@ -21,6 +21,8 @@ const RFACC_KEY = crypto.createHash('sha256').update('riff-account-key-v1').dige
 const APP_ID = 'io.github.rootscripts.riff';
 const IS_MAC = process.platform === 'darwin';
 
+// Keep the historical data folder name so settings, logins and the library
+// index survive the rename; only the visible name changes.
 app.setName('Riff');
 if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
 
@@ -109,16 +111,9 @@ app.commandLine.appendSwitch('disable-background-networking');
 app.commandLine.appendSwitch('disable-domain-reliability');
 app.commandLine.appendSwitch('disable-sync');
 app.commandLine.appendSwitch('disable-speech-api');
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512 --expose-gc');
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512');
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 
-function performAppMemoryTrim() {
-  try {
-    if (global.gc) global.gc();
-  } catch (_) {}
-}
-
-setInterval(performAppMemoryTrim, 180000);
 app.on('ready', () => {
   const cleanUA = (app.userAgentFallback || '').replace(/\s*Electron\/[^\s]+/gi, '').replace(/\s*riff\/[^\s]+/gi, '');
   if (cleanUA) app.userAgentFallback = cleanUA;
@@ -171,6 +166,10 @@ function runGUI() {
     }
   });
   let serverPort = PORT;
+  // Resolves once the internal server is listening; the renderer asks for its
+  // port before it makes any request, so nothing has to wait in the main
+  // process' startup path.
+  let serverReady = Promise.resolve(PORT);
   let tray = null;
   let isQuitting = false;
   let trayOnClose = process.platform !== 'linux';
@@ -375,8 +374,15 @@ function runGUI() {
   }
 
   async function createWindow() {
-    serverPort = await startServer(PORT);
-    try { await mobile.startIfEnabled(); } catch (_) {}
+    // Commands from the phone's /remote page are forwarded to the renderer,
+    // which is the only place playback can be changed.
+    mobile.onRemoteCommand((command) => {
+      try {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('mobile-command', command);
+        }
+      } catch (_) {}
+    });
     const firstRun = !tutorialDone();
     const initialBounds = getResponsiveWindowBounds();
     const savedState = readWindowState();
@@ -392,7 +398,7 @@ function runGUI() {
       minWidth: 800,
       minHeight: 540,
                                    backgroundColor: firstRun ? '#8d5ef2' : '#000000',
-                                   title: 'Riff',
+                                   title: 'SOPlayer',
                                    icon: path.join(__dirname, '../../assets', 'icon.png'),
                                    frame: IS_MAC,
                                    titleBarStyle: IS_MAC ? 'hiddenInset' : 'hidden',
@@ -419,20 +425,25 @@ function runGUI() {
       mainWindow.show();
     });
 
-    let _trimDebounceTimer = null;
-    const scheduleWindowTrim = (delayMs = 1500) => {
-      if (_trimDebounceTimer) clearTimeout(_trimDebounceTimer);
-      _trimDebounceTimer = setTimeout(() => {
-        _trimDebounceTimer = null;
-        performAppMemoryTrim();
-      }, delayMs);
-    };
-
-    mainWindow.on('blur', () => scheduleWindowTrim(1500));
-    mainWindow.on('minimize', () => scheduleWindowTrim(400));
-    mainWindow.on('hide', () => scheduleWindowTrim(400));
-
     mainWindow.loadFile(path.join(__dirname, '../renderer', firstRun ? 'welcome.html' : 'index.html'));
+
+    // The window is already loading: start the internal server and the phone
+    // listener beside it instead of before it, so first paint no longer waits
+    // for them. Anything that needs the port (the renderer included) awaits
+    // `serverReady`, and the phone's "Trending now" / daily mixes still come
+    // from this process' feed, which only trusts its own token.
+    serverReady = startServer(PORT)
+      .then(async (port) => {
+        serverPort = port;
+        try { mobile.setDesktopPort(port, getServerToken()); } catch (_) {}
+        try { await mobile.startIfEnabled(); } catch (_) {}
+        return port;
+      })
+      .catch((err) => {
+        logger.error('Could not start the internal server', err);
+        return serverPort;
+      });
+
     if (firstRun) {
       ipcMain.removeAllListeners('welcome-finish');
       ipcMain.once('welcome-finish', (e, detail) => {
@@ -467,11 +478,6 @@ function runGUI() {
 
     mainWindow.on('minimize', () => {
       safeSend(mainWindow, 'window-visibility', false);
-      if (global.gc) global.gc();
-    });
-
-    mainWindow.on('blur', () => {
-      if (global.gc) global.gc();
     });
 
     mainWindow.on('restore', () => {
@@ -531,6 +537,9 @@ function runGUI() {
   ipcMain.removeHandler('mobile-remove-folder');
   ipcMain.removeHandler('mobile-test-connection');
   ipcMain.removeHandler('mobile-scan-library');
+  ipcMain.removeHandler('mobile-sync-collection');
+  ipcMain.removeHandler('mobile-report-remote-state');
+  ipcMain.removeHandler('mobile-resolve-tracks');
 
   ipcMain.handle('mobile-get-config', () => ({
     config: mobile.getConfig(),
@@ -550,6 +559,36 @@ function runGUI() {
   }));
 
   ipcMain.handle('mobile-status', () => mobile.getStatus());
+
+  // Two-way favourites / playlists between SOPlayer's localStorage collections and
+  // the phone server. Safe when phone access is off: it still merges locally
+  // and simply reports nothing to push.
+  ipcMain.handle('mobile-sync-collection', (event, payload) => {
+    try {
+      return mobile.syncCollection(payload);
+    } catch (err) {
+      return { changed: false, error: (err && err.message) || String(err), collection: null };
+    }
+  });
+
+  // The renderer owns playback; it reports what is playing so the phone's
+  // /remote page can show it (Phase 5).
+  ipcMain.handle('mobile-report-remote-state', (event, snapshot) => {
+    mobile.setRemoteState(snapshot);
+    return { ok: true };
+  });
+
+  // The phone can ask the desktop to play specific songs ("Play on PC"). It only
+  // knows Subsonic ids, so they are resolved here against the desktop library
+  // and the online cache before the renderer sees them.
+  ipcMain.handle('mobile-resolve-tracks', (event, ids, startIndex) => {
+    try {
+      const resolved = mobile.resolveTracks(Array.isArray(ids) ? ids : [], startIndex);
+      return { ok: true, tracks: resolved.tracks, index: resolved.index };
+    } catch (err) {
+      return { ok: false, tracks: [], index: 0, error: (err && err.message) || String(err) };
+    }
+  });
 
   ipcMain.handle('mobile-scan-library', () => {
     // Start in the background; the renderer polls mobile-status for progress.
@@ -614,7 +653,7 @@ function runGUI() {
       const req = http.get({
         host: '127.0.0.1',
         port,
-        path: `/rest/ping.view?u=${encodeURIComponent(cfg.username)}&p=enc:${Buffer.from(cfg.password, 'utf8').toString('hex')}&v=1.16.1&c=Riff&f=json`,
+        path: `/rest/ping.view?u=${encodeURIComponent(cfg.username)}&p=enc:${Buffer.from(cfg.password, 'utf8').toString('hex')}&v=1.16.1&c=SOPlayer&f=json`,
         timeout: 4000,
       }, (res) => {
         let body = '';
@@ -792,7 +831,7 @@ function runGUI() {
     });
 
     ipcMain.handle('get-diagnostics', async () => {
-      const lines = [`Riff ${app.getVersion()}`, `OS ${process.platform} ${process.arch} ${os.release()}`, `Electron ${process.versions.electron} Chromium ${process.versions.chrome} Node ${process.versions.node}`, `Locale ${app.getLocale()}`, `Data ${DATA_DIR}`];
+      const lines = [`SOPlayer ${app.getVersion()}`, `OS ${process.platform} ${process.arch} ${os.release()}`, `Electron ${process.versions.electron} Chromium ${process.versions.chrome} Node ${process.versions.node}`, `Locale ${app.getLocale()}`, `Data ${DATA_DIR}`];
       for (const name of ['yt-dlp', 'ffmpeg']) {
         const bin = resolveBinary(name);
         lines.push(`${name}: ${bin || 'NOT FOUND'}`);
@@ -802,7 +841,7 @@ function runGUI() {
     });
     ipcMain.on('open-logs-folder', () => { shell.openPath(LOG_DIR); });
 
-      ipcMain.handle('get-server-port', () => serverPort);
+      ipcMain.handle('get-server-port', () => serverReady);
       ipcMain.handle('set-app-proxy', async (event, proxyUrl) => {
         try {
           const clean = String(proxyUrl || '').trim();
@@ -1606,9 +1645,9 @@ function runGUI() {
         try {
           const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
           const r = await dialog.showSaveDialog(win, {
-            title: 'Export Riff account',
+            title: 'Export SOPlayer account',
             defaultPath: 'riff-account.rfacc',
-            filters: [{ name: 'Riff Account (.rfacc)', extensions: ['rfacc'] }]
+            filters: [{ name: 'SOPlayer Account (.rfacc)', extensions: ['rfacc'] }]
           });
           if (r.canceled || !r.filePath) return { canceled: true };
           const buffer = encryptAccount(payload || {});
@@ -1623,9 +1662,9 @@ function runGUI() {
         try {
           const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
           const r = await dialog.showOpenDialog(win, {
-            title: 'Import Riff account',
+            title: 'Import SOPlayer account',
             properties: ['openFile'],
-            filters: [{ name: 'Riff Account (.rfacc)', extensions: ['rfacc'] }]
+            filters: [{ name: 'SOPlayer Account (.rfacc)', extensions: ['rfacc'] }]
           });
           if (r.canceled || !r.filePaths || !r.filePaths.length) return { canceled: true };
           const buffer = await fs.promises.readFile(r.filePaths[0]);
@@ -2146,14 +2185,14 @@ function runGUI() {
               const actual = Buffer.from(returnedState);
               if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) {
                 res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
-                res.end('Authorization could not be verified. Return to Riff and try again.');
+                res.end('Authorization could not be verified. Return to SOPlayer and try again.');
                 finish(new Error('Google authorization state did not match'));
                 return;
               }
               const providerError = requestUrl.searchParams.get('error');
               if (providerError) {
                 res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-                res.end('<!doctype html><title>Riff</title><p>Google sign-in was cancelled. You can close this tab and return to Riff.</p>');
+                res.end('<!doctype html><title>SOPlayer</title><p>Google sign-in was cancelled. You can close this tab and return to SOPlayer.</p>');
                 finish(new Error(providerError === 'access_denied'
                   ? 'Google sign-in was cancelled'
                   : `Google authorization failed: ${providerError}`));
@@ -2162,12 +2201,12 @@ function runGUI() {
               const code = requestUrl.searchParams.get('code');
               if (!code) {
                 res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
-                res.end('Google did not return an authorization code. Return to Riff and try again.');
+                res.end('Google did not return an authorization code. Return to SOPlayer and try again.');
                 finish(new Error('Google did not return an authorization code'));
                 return;
               }
               res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-              res.end('<!doctype html><title>Riff</title><p>Google account connected. You can close this tab and return to Riff.</p>');
+              res.end('<!doctype html><title>SOPlayer</title><p>Google account connected. You can close this tab and return to SOPlayer.</p>');
               finish(null, { code });
             };
             server.on('request', onRequest);
@@ -2180,7 +2219,7 @@ function runGUI() {
             codeVerifier
           });
           if (!tokens.refresh_token) {
-            throw new Error('Google did not provide a refresh token. Revoke Riff access in your Google account and try again.');
+            throw new Error('Google did not provide a refresh token. Revoke SOPlayer access in your Google account and try again.');
           }
           writeGoogleOAuthData({
             accessToken: tokens.access_token,
@@ -2592,7 +2631,7 @@ function runGUI() {
           let trayIcon = nativeImage.createFromPath(iconPath);
           trayIcon = trayIcon.resize({ width: 22, height: 22 });
           tray = new Tray(trayIcon);
-          tray.setToolTip('Riff');
+          tray.setToolTip('SOPlayer');
           const contextMenu = Menu.buildFromTemplate([
             {
               label: 'Show/Hide',

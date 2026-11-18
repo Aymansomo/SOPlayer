@@ -18,12 +18,14 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 
 const { DATA_DIR, resolveBinary } = require('../../shared/platform');
+const { writeFileAtomic } = require('./atomic-write');
 const config = require('./config');
+const online = require('./online');
 
 const LIBRARY_VERSION = 2;
 const LIBRARY_PATH = path.join(DATA_DIR, 'mobile-library.json');
 const COVERS_DIR = path.join(DATA_DIR, 'mobile-covers');
-const FALLBACK_COVER = path.join(__dirname, '../../../assets/icon.png');
+const FALLBACK_COVER = path.join(__dirname, '../../../assets/cover-placeholder.png');
 
 const AUDIO_TYPES = new Map([
   ['.mp3', 'audio/mpeg'],
@@ -66,7 +68,11 @@ let indexes = null;
 function emptyIndexes() {
   return {
     songById: new Map(),
+    songIdByPath: new Map(),
+    songSearch: new Map(),
     albumById: new Map(),
+    albumSearch: new Map(),
+    artistSearch: new Map(),
     artistById: new Map(),
     songsByAlbum: new Map(),
     songsByArtist: new Map(),
@@ -98,6 +104,11 @@ function normalizeKey(value) {
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** Windows paths are case-insensitive, so every path is compared in this shape. */
+function normalizePathKey(value) {
+  return String(value == null ? '' : value).replace(/\\/g, '/').toLowerCase();
 }
 
 function compareText(a, b) {
@@ -226,12 +237,8 @@ function readStateFromDisk() {
 
 function writeStateToDisk(data) {
   const payload = JSON.stringify(data);
-  try {
-    fs.mkdirSync(path.dirname(LIBRARY_PATH), { recursive: true });
-    const tmp = `${LIBRARY_PATH}.${process.pid}.tmp`;
-    fs.writeFileSync(tmp, payload, 'utf8');
-    fs.renameSync(tmp, LIBRARY_PATH);
-  } catch (err) {
+  const err = writeFileAtomic(LIBRARY_PATH, payload, 'utf8');
+  if (err) {
     console.warn('[mobile] could not save library index:', err && err.message);
   }
 }
@@ -257,14 +264,27 @@ function buildIndexes() {
 
   for (const song of state.songs) {
     next.songById.set(song.id, song);
+    if (typeof song.path === 'string' && song.path) {
+      next.songIdByPath.set(normalizePathKey(song.path), song.id);
+    }
+    // Normalised once per scan instead of once per search request.
+    next.songSearch.set(song.id, [
+      normalizeKey(song.title),
+      normalizeKey(song.artist),
+      normalizeKey(song.album),
+    ]);
     if (!next.songsByAlbum.has(song.albumId)) next.songsByAlbum.set(song.albumId, []);
     next.songsByAlbum.get(song.albumId).push(song);
     if (!next.songsByArtist.has(song.artistId)) next.songsByArtist.set(song.artistId, []);
     next.songsByArtist.get(song.artistId).push(song);
   }
-  for (const album of state.albums) next.albumById.set(album.id, album);
+  for (const album of state.albums) {
+    next.albumById.set(album.id, album);
+    next.albumSearch.set(album.id, [normalizeKey(album.name), normalizeKey(album.artist)]);
+  }
   for (const artist of state.artists) {
     next.artistById.set(artist.id, artist);
+    next.artistSearch.set(artist.id, normalizeKey(artist.name));
     next.albumsByArtist.set(artist.id, []);
   }
   for (const album of state.albums) {
@@ -668,6 +688,70 @@ function buildCollections(songs) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Cache maintenance (Phase 2)
+// ---------------------------------------------------------------------------
+
+const STALE_TEMP_MS = 60 * 60 * 1000;
+
+/**
+ * Drop cover files whose album is gone, plus temp files left behind by an
+ * interrupted write. Online thumbnails (`online-*.img`) belong to online.js and
+ * are never touched here.
+ */
+async function pruneCoverFiles() {
+  let entries;
+  try {
+    entries = await fs.promises.readdir(COVERS_DIR);
+  } catch (_) {
+    return 0;
+  }
+
+  const albumIds = new Set(
+    (state && Array.isArray(state.albums) ? state.albums : []).map((album) => `${album.id}.jpg`)
+  );
+  const now = Date.now();
+  let removed = 0;
+
+  for (const name of entries) {
+    const lower = name.toLowerCase();
+    const isCover = lower.endsWith('.jpg');
+    const isTemp = lower.endsWith('.tmp');
+    if (!isCover && !isTemp) continue;
+    if (isCover && albumIds.has(name)) continue;
+
+    const full = path.join(COVERS_DIR, name);
+    try {
+      if (isTemp) {
+        const stat = await fs.promises.stat(full);
+        if (now - stat.mtimeMs < STALE_TEMP_MS) continue;
+      }
+      await fs.promises.unlink(full);
+      removed += 1;
+    } catch (_) {}
+  }
+  return removed;
+}
+
+/** Remove `mobile-*.json.<pid>.tmp` files left by a crash or a power cut. */
+async function pruneStaleTempFiles() {
+  let entries;
+  try { entries = await fs.promises.readdir(DATA_DIR); } catch (_) { return 0; }
+  const now = Date.now();
+  let removed = 0;
+  for (const name of entries) {
+    if (!/^mobile-.*\.tmp$/i.test(name)) continue;
+    const full = path.join(DATA_DIR, name);
+    try {
+      const stat = await fs.promises.stat(full);
+      if (now - stat.mtimeMs <= STALE_TEMP_MS) continue;
+      await fs.promises.unlink(full);
+      removed += 1;
+    } catch (_) {}
+  }
+  return removed;
+}
+
 async function doScan() {
   ensureLoaded();
   const folders = configuredFolders();
@@ -685,6 +769,7 @@ async function doScan() {
     };
     buildIndexes();
     writeStateToDisk(state);
+    pruneCoverFiles().catch(() => {});
     return state;
   }
 
@@ -737,6 +822,7 @@ async function doScan() {
 
   buildIndexes();
   writeStateToDisk(state);
+  pruneCoverFiles().catch(() => {});
   return state;
 }
 
@@ -771,6 +857,7 @@ function startScan() {
  */
 function init() {
   ensureLoaded();
+  pruneStaleTempFiles().catch(() => {});
   const folders = configuredFolders();
   const signature = folderSignature(folders);
   const stale = !state || !state.generatedAt || state.folderSignature !== signature;
@@ -804,37 +891,43 @@ function getScanStatus() {
 
 function getSong(id) {
   const idx = getIndexes();
-  return idx.songById.get(String(id)) || null;
+  return idx.songById.get(String(id)) || online.getSong(id) || null;
 }
 
 function getAlbum(id) {
   const idx = getIndexes();
-  return idx.albumById.get(String(id)) || null;
+  return idx.albumById.get(String(id)) || online.getAlbum(id) || null;
 }
 
 function getArtist(id) {
   const idx = getIndexes();
-  return idx.artistById.get(String(id)) || null;
+  return idx.artistById.get(String(id)) || online.getArtist(id) || null;
 }
 
 function albumSongs(albumId) {
   const idx = getIndexes();
-  return idx.songsByAlbum.get(String(albumId)) || [];
+  return idx.songsByAlbum.get(String(albumId)) || online.albumSongs(albumId);
 }
 
 function artistAlbums(artistId) {
   const idx = getIndexes();
-  return idx.albumsByArtist.get(String(artistId)) || [];
+  return idx.albumsByArtist.get(String(artistId)) || online.artistAlbums(artistId);
 }
 
+// The local index is the source of browsing; online songs (Phase 4) are merged
+// in on every read so the two never fight over the cached index file.
 function allAlbums() {
   ensureLoaded();
-  return state ? state.albums : [];
+  const local = state ? state.albums : [];
+  const extra = online.albums();
+  return extra.length ? local.concat(extra) : local;
 }
 
 function allArtists() {
   ensureLoaded();
-  return state ? state.artists : [];
+  const local = state ? state.artists : [];
+  const extra = online.artists();
+  return extra.length ? local.concat(extra) : local;
 }
 
 function allSongs() {
@@ -939,26 +1032,40 @@ function genres() {
 
 function searchArtists(query, limit, offset) {
   const q = normalizeKey(query);
-  const list = allArtists().filter((artist) => !q || normalizeKey(artist.name).includes(q));
+  const idx = getIndexes();
+  const list = allArtists().filter((artist) => {
+    if (!q) return true;
+    const name = idx.artistSearch.get(artist.id);
+    return (name === undefined ? normalizeKey(artist.name) : name).includes(q);
+  });
   return { total: list.length, items: list.slice(offset, offset + limit) };
 }
 
 function searchAlbums(query, limit, offset) {
   const q = normalizeKey(query);
+  const idx = getIndexes();
   const list = allAlbums().filter((album) => {
     if (!q) return true;
-    return normalizeKey(album.name).includes(q) || normalizeKey(album.artist).includes(q);
+    const keys = idx.albumSearch.get(album.id);
+    const name = keys ? keys[0] : normalizeKey(album.name);
+    const artist = keys ? keys[1] : normalizeKey(album.artist);
+    return name.includes(q) || artist.includes(q);
   });
   return { total: list.length, items: list.slice(offset, offset + limit) };
 }
 
 function searchSongs(query, limit, offset) {
   const q = normalizeKey(query);
+  const idx = getIndexes();
   const list = allSongs().filter((song) => {
     if (!q) return true;
-    return normalizeKey(song.title).includes(q)
-      || normalizeKey(song.artist).includes(q)
-      || normalizeKey(song.album).includes(q);
+    const keys = idx.songSearch.get(song.id);
+    if (!keys) {
+      return normalizeKey(song.title).includes(q)
+        || normalizeKey(song.artist).includes(q)
+        || normalizeKey(song.album).includes(q);
+    }
+    return keys[0].includes(q) || keys[1].includes(q) || keys[2].includes(q);
   });
   return { total: list.length, items: list.slice(offset, offset + limit) };
 }
@@ -994,6 +1101,16 @@ function streamInfo(songId) {
     name: path.basename(song.path),
     song,
   };
+}
+
+/**
+ * Find an indexed song by its file path (used by the favourite-sync bridge).
+ * Windows paths are case-insensitive, so both sides are normalised.
+ */
+function songIdByPath(filePath) {
+  const wanted = normalizePathKey(filePath);
+  if (!wanted) return '';
+  return getIndexes().songIdByPath.get(wanted) || '';
 }
 
 function downloadName(songId) {
@@ -1138,8 +1255,10 @@ module.exports = {
   startScan,
   getScanStatus,
   streamInfo,
+  songIdByPath,
   downloadName,
   ensureCoverArt,
+  pruneCoverFiles,
   configuredFolders,
   isoDate,
 };

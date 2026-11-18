@@ -17,6 +17,7 @@ import paige.navic.domain.repository.LyricsRepository
 import paige.navic.domain.repository.PlayerStateRepository
 import paige.navic.domain.repository.PlaylistRepository
 import paige.navic.domain.repository.RadioRepository
+import paige.navic.domain.repository.RemoteRepository
 import paige.navic.domain.repository.SearchRepository
 import paige.navic.domain.repository.ShareRepository
 import paige.navic.domain.repository.SongRepository
@@ -31,6 +32,7 @@ val repositoryModule = module {
 	singleOf(::PlayerStateRepository)
 	singleOf(::PlaylistRepository)
 	singleOf(::RadioRepository)
+	singleOf(::RemoteRepository)
 	singleOf(::SearchRepository)
 	singleOf(::ShareRepository)
 	singleOf(::SongRepository)

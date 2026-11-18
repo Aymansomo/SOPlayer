@@ -32,6 +32,7 @@ import paige.navic.ui.screen.queue.viewmodel.QueueViewModel
 import paige.navic.ui.screen.radio.viewmodel.RadioCreateDialogViewModel
 import paige.navic.ui.screen.radio.viewmodel.RadioListViewModel
 import paige.navic.ui.screen.radio.viewmodel.RadioUpdateDialogViewModel
+import paige.navic.ui.screen.remote.viewmodel.RemoteViewModel
 import paige.navic.ui.screen.search.viewmodel.SearchViewModel
 import paige.navic.ui.screen.settings.viewmodel.CoverArtProvidersViewModel
 import paige.navic.ui.screen.settings.viewmodel.LyricsPriorityViewModel
@@ -94,7 +95,8 @@ val viewModelModule = module {
 			songIds = songIds,
 			playlistToExclude = playlistToExclude,
 			sessionManager = get(),
-			snackBarManager = get()
+			snackBarManager = get(),
+			downloadManager = get()
 		)
 	}
 
@@ -130,6 +132,7 @@ val viewModelModule = module {
 	viewModelOf(::SearchViewModel)
 	viewModelOf(::GenreListViewModel)
 	viewModelOf(::RadioListViewModel)
+	viewModelOf(::RemoteViewModel)
 	viewModelOf(::RadioCreateDialogViewModel)
 	viewModel { params ->
 		RadioUpdateDialogViewModel(
@@ -158,6 +161,7 @@ val viewModelModule = module {
 			albumRepository = get(),
 			sessionManager = get(),
 			snackBarManager = get(),
+			downloadManager = get(),
 			reachability = get()
 		)
 	}

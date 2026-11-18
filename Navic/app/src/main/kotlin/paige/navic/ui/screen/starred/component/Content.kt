@@ -7,7 +7,6 @@
 package paige.navic.ui.screen.starred.component
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,9 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -70,7 +66,7 @@ fun StarredScreenContent(
 	onSetShareId: (String) -> Unit,
 	isOnline: Boolean = false,
 
-	songs: LazyPagingItems<DomainSong>?,
+	songs: List<DomainSong>,
 	selectedSong: DomainSong?,
 	selectedSongIsStarred: Boolean,
 	selectedSongRating: Int,
@@ -110,7 +106,6 @@ fun StarredScreenContent(
 	onPlayArtistNext: () -> Unit,
 	onAddArtistToQueue: () -> Unit,
 ) {
-	val gridState = rememberLazyGridState()
 	val backStack = LocalNavStack.current
 
 	val layoutDirection = LocalLayoutDirection.current
@@ -120,7 +115,7 @@ fun StarredScreenContent(
 
 	val scrollState = rememberScrollState()
 
-	val songCount = songs?.itemCount ?: 0
+	val songCount = songs.size
 	val albumCount = albums?.itemCount ?: 0
 	val artistCount = artists?.itemCount ?: 0
 	val totalCount = songCount + albumCount + artistCount
@@ -169,7 +164,7 @@ fun StarredScreenContent(
 					bottom = innerPadding.calculateBottomPadding()
 				), horizontalAlignment = Alignment.CenterHorizontally
 		) {
-			if (songCount > 0 && songs != null) {
+			if (songCount > 0) {
 				Row(
 					modifier = Modifier
 						.heightIn(min = 32.dp)
@@ -184,43 +179,14 @@ fun StarredScreenContent(
 						style = MaterialTheme.typography.titleMediumEmphasized,
 						fontWeight = FontWeight(600)
 					)
-					Text(
-						stringResource(R.string.action_see_all),
-						style = MaterialTheme.typography.labelLarge,
-						color = MaterialTheme.colorScheme.primary,
-						modifier = Modifier.clickable(onClick = dropUnlessResumed {
-							backStack.add(
-								Screen.SongList(
-									nested = true, listType = DomainSongListType.FrequentlyPlayed
-								)
-							)
-						})
-					)
 				}
-				val rowCount = remember(songCount) {
-					songCount.coerceIn(1, 3)
-				}
-				val gridHeight = remember(rowCount) {
-					when (rowCount) {
-						1 -> 82.dp
-						2 -> 164.dp
-						else -> 246.dp
-					}
-				}
-				LazyHorizontalGrid(
-					rows = GridCells.Fixed(rowCount),
-					state = gridState,
-					flingBehavior = rememberSnapFlingBehavior(lazyGridState = gridState),
-					modifier = Modifier
-						.fillMaxWidth()
-						.height(gridHeight)
-				) {
-					items(songCount) { index ->
-						val song = songs[index] ?: return@items
-
+				// Every starred song is listed: the old three-row horizontal grid kept
+				// the rest of a long "liked songs" list off-screen to the right.
+				Column(modifier = Modifier.fillMaxWidth()) {
+					songs.forEachIndexed { index, song ->
 						val download = downloadsMap[song.id]
 						SongRow(
-							modifier = Modifier.weight(1f),
+							modifier = Modifier.fillMaxWidth(),
 							song = song,
 							selected = selectedSong == song,
 							onClick = { onPlaySong(index) },

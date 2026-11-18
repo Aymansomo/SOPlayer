@@ -41,7 +41,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import paige.navic.R
@@ -70,6 +69,7 @@ import paige.navic.ui.icons.outlined.Queue
 import paige.navic.ui.icons.outlined.QueuePlayNext
 import paige.navic.ui.util.InlineExplicitIcon
 import paige.navic.ui.util.buildSongInfoString
+import paige.navic.ui.util.rememberSongPlaybackState
 import paige.navic.util.toHoursMinutesSeconds
 
 @Composable
@@ -90,10 +90,10 @@ fun CollectionDetailScreenSongRow(
 	val preferenceManager = koinInject<PreferenceManager>()
 
 	val player = koinInject<MediaPlayer>()
-	val playerState by player.uiState.collectAsStateWithLifecycle()
+	val playback by rememberSongPlaybackState(player, song.id)
 
 	val isDownloaded = download?.status == DownloadStatus.DOWNLOADED
-	val isCurrentTrack = playerState.currentSong?.id == song.id
+	val isCurrentTrack = playback.isCurrent
 	val isExplicit = song.explicitStatus == DomainExplicitStatus.Explicit
 		&& preferenceManager.explicitContentPlayback != ExplicitContentPlayback.Allowed
 	val maybeUnavailable = isOffline && !isDownloaded
@@ -109,14 +109,14 @@ fun CollectionDetailScreenSongRow(
 		gesturesEnabled = !isExplicit,
 		onDismiss = {
 			if (it == SwipeToDismissBoxValue.StartToEnd) {
-				if (!preferenceManager.shushQueueDuplicateDialog && playerState.queue.any { item -> item.id == song.id }) {
+				if (!preferenceManager.shushQueueDuplicateDialog && player.uiState.value.queue.any { item -> item.id == song.id }) {
 					isPlayNextPending = false
 				} else {
 					onAddToQueue()
 				}
 			}
 			if (it == SwipeToDismissBoxValue.EndToStart) {
-				if (!preferenceManager.shushQueueDuplicateDialog && playerState.queue.any { item -> item.id == song.id }) {
+				if (!preferenceManager.shushQueueDuplicateDialog && player.uiState.value.queue.any { item -> item.id == song.id }) {
 					isPlayNextPending = true
 				} else {
 					onPlayNext()
@@ -276,7 +276,7 @@ fun CollectionDetailScreenSongRow(
 					if (isCurrentTrack) {
 						Waveform(
 							modifier = Modifier.padding(end = 12.dp),
-							isPlaying = !playerState.isPaused
+							isPlaying = !playback.isPaused
 						)
 					}
 					song.duration.toHoursMinutesSeconds().let {

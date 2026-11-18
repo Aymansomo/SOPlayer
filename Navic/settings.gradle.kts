@@ -8,6 +8,14 @@
 
 import androidx.media3.buildlogic.includeMedia3
 
+val localProps = file("local.properties")
+val media3LocalProps = file("vendor/androidx-media/local.properties")
+if (localProps.exists()) {
+	if (!media3LocalProps.exists() || media3LocalProps.readText() != localProps.readText()) {
+		localProps.copyTo(media3LocalProps, overwrite = true)
+	}
+}
+
 rootProject.name = "Navic"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 

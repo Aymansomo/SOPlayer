@@ -20,6 +20,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.json.Json
 import paige.navic.database.dao.AlbumDao
@@ -53,6 +54,11 @@ class DownloadProcessor(
 	private val preferenceManager: PreferenceManager,
 	dnsResolver: NavicDnsResolver
 ) {
+	companion object {
+		private const val MAX_ATTEMPTS = 3
+		private const val RETRY_DELAY_MS = 1500L
+	}
+
 	private val client = createHttpClientWithPreferences(preferenceManager, dnsResolver).apply {
 		config {
 			HttpResponseValidator {
@@ -96,12 +102,34 @@ class DownloadProcessor(
 		requireQueued(songId)
 
 		val song = resolveSong(songId)
-		val seenCovers = mutableSetOf<String>()
 
-		cacheCoverArt(song.coverArtId, seenCovers)
-		cacheAlbumCoverArt(song.albumId, seenCovers)
-		cacheLyrics(song.id)
-		downloadAudioFile(song, onProgress)
+		// A fresh online song has to be resolved on the PC before the first byte
+		// can be sent, and a busy desktop can make that attempt fail. That first
+		// try warms it up, so retrying turns "download, wait, tap download again"
+		// into a single tap.
+		var attempt = 0
+		while (true) {
+			try {
+				val seenCovers = mutableSetOf<String>()
+
+				cacheCoverArt(song.coverArtId, seenCovers)
+				cacheAlbumCoverArt(song.albumId, seenCovers)
+				cacheLyrics(song.id)
+				downloadAudioFile(song, onProgress)
+				return
+			} catch (e: Exception) {
+				if (e is CancellationException || e is DownloadCancelledException) throw e
+				attempt++
+				if (attempt >= MAX_ATTEMPTS) throw e
+				Logger.w(
+					"DownloadProcessor",
+					"attempt $attempt for ${song.id} failed, retrying",
+					e
+				)
+				delay(RETRY_DELAY_MS * attempt)
+				requireQueued(songId)
+			}
+		}
 	}
 
 	private suspend fun resolveSong(songId: String): DomainSong {

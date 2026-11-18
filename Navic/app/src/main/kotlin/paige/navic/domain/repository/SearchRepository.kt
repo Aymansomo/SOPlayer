@@ -34,7 +34,21 @@ class SearchRepository(
 
 				albumDao.insertAlbumsIgnoringConflicts(data.albums.map { it.toEntity() })
 				artistDao.insertArtistsIgnoringConflicts(data.artists.map { it.toEntity() })
-				songDao.insertSongsIgnoringConflicts(data.songs.map { it.toEntity() })
+				val songEntities = data.songs.map { it.toEntity() }
+				songDao.insertSongsIgnoringConflicts(songEntities)
+				// Rows synced earlier keep their old metadata on conflict, so refresh the
+				// displayed fields from what the server just returned (e.g. a cleaned
+				// online title, or a real artist instead of the upload channel).
+				songEntities.forEach { song ->
+					songDao.updateSongMetadata(
+						songId = song.songId,
+						title = song.title,
+						artistName = song.artistName,
+						albumTitle = song.albumTitle,
+						coverArtId = song.coverArtId,
+						duration = song.duration
+					)
+				}
 
 				val albumIds = data.albums.map { it.id }
 				val artistIds = data.artists.map { it.id }

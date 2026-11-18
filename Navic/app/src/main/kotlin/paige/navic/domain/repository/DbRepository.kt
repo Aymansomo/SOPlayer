@@ -121,6 +121,11 @@ class DbRepository(
 			validAlbumIds.addAll(libraryResult.first)
 			validSongIds.addAll(libraryResult.second)
 
+			// Keep starred songs that are not on a library page (online stars).
+			val starredResult = syncStarred().getOrThrow()
+			validAlbumIds.addAll(starredResult.first)
+			validSongIds.addAll(starredResult.second)
+
 			val totalPlaylists = playlists.size
 			if (totalPlaylists > 0) {
 				val completedPlaylists = AtomicInt(0)
@@ -265,6 +270,33 @@ class DbRepository(
 
 		onProgress(1.0f, R.string.info_syncing_saved)
 		allValidAlbumIds to allValidSongIds
+	}
+
+	/**
+	 * Stars come from every client (Riff on the PC, Navic, the web UI) and do not
+	 * appear on the library pages `syncLibrarySongs` walks, so they need a sync of
+	 * their own: otherwise the Starred screen only knew about songs it happened to
+	 * browse after they were starred somewhere else.
+	 */
+	suspend fun syncStarred(): Result<Pair<Set<String>, Set<String>>> = runDbOp {
+		val starred = sessionManager.api.getStarredID3()
+
+		val albumEntities = starred.albums.map { it.toEntity() }
+		val songEntities = buildList {
+			starred.songs.forEach { add(it.toEntity()) }
+			starred.albums.forEach { album ->
+				album.songs.forEach { add(it.toEntity()) }
+			}
+		}
+
+		albumEntities.chunked(dbChunkSize).forEach { chunk ->
+			albumDao.insertAlbums(chunk)
+		}
+		songEntities.chunked(1500).forEach { chunk ->
+			songDao.insertSongs(chunk)
+		}
+
+		albumEntities.map { it.albumId }.toSet() to songEntities.map { it.songId }.toSet()
 	}
 
 	suspend fun syncPlaylists(): Result<List<PlaylistEntity>> = runDbOp {

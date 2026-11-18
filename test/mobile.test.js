@@ -94,7 +94,7 @@ test('Subsonic handshake and library over the LAN listener', async (t) => {
   assert.strictEqual(ping.status, 200);
   const pingBody = JSON.parse(ping.body)['subsonic-response'];
   assert.strictEqual(pingBody.status, 'ok');
-  assert.strictEqual(pingBody.type, 'Riff');
+  assert.strictEqual(pingBody.type, 'SOPlayer');
   assert.strictEqual(pingBody.version, '1.16.1');
   assert.strictEqual(pingBody.openSubsonic, true);
 
@@ -133,6 +133,16 @@ test('Subsonic handshake and library over the LAN listener', async (t) => {
   assert.strictEqual(album.song.length, 1);
   assert.strictEqual(album.song[0].title, 'Test Song');
   assert.strictEqual(album.song[0].artist, 'Test Artist');
+
+  // Navic opens every album page with the ID3 variant; answer it instead of
+  // surfacing a GENERIC "Endpoint not implemented" error over the album.
+  for (const method of ['getAlbumInfo', 'getAlbumInfo2']) {
+    const info = JSON.parse(
+      (await get(port, `/rest/${method}.view?id=${albumSummary.id}&${auth}&f=json`)).body
+    )['subsonic-response'];
+    assert.strictEqual(info.status, 'ok', `${method} should succeed`);
+    assert.match(info.albumInfo.notes, /Test Song/);
+  }
 
   const song = JSON.parse(
     (await get(port, `/rest/getSong.view?id=${album.song[0].id}&${auth}&f=json`)).body

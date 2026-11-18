@@ -35,6 +35,7 @@ import paige.navic.database.entity.DownloadEntity
 import paige.navic.database.entity.DownloadStatus
 import paige.navic.domain.manager.runtime.NotificationIds
 import paige.navic.domain.manager.runtime.NotificationManager
+import paige.navic.domain.manager.runtime.PreferenceManager
 import paige.navic.domain.manager.runtime.StorageManager
 import paige.navic.domain.model.settings.DownloadStorage
 import paige.navic.util.Logger
@@ -51,6 +52,7 @@ class DownloadManager(
 	private val storageManager: StorageManager,
 	private val notificationManager: NotificationManager,
 	private val sessionManager: SessionManager,
+	private val preferenceManager: PreferenceManager,
 	context: Context
 ) {
 	private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -125,6 +127,42 @@ class DownloadManager(
 
 	suspend fun downloadCollection(collection: List<String>) {
 		enqueueSongs(collection)
+	}
+
+	/**
+	 * Playlists the user downloaded once. Remembering them is what lets new
+	 * songs added later download on their own, without pressing the button
+	 * again.
+	 */
+	fun isAutoDownloadPlaylist(playlistId: String): Boolean =
+		playlistId in preferenceManager.downloadedPlaylists
+
+	fun setAutoDownloadPlaylist(playlistId: String, enabled: Boolean) {
+		val current = preferenceManager.downloadedPlaylists
+		preferenceManager.downloadedPlaylists = if (enabled) {
+			if (playlistId in current) current else current + playlistId
+		} else {
+			current - playlistId
+		}
+	}
+
+	/** Queue any song of [playlistId] that is not downloaded yet. */
+	fun syncAutoDownload(playlistId: String) {
+		if (!isAutoDownloadPlaylist(playlistId)) return
+		scope.launch {
+			val ids = songDao.getSongIdsByPlaylistId(playlistId)
+			val queued = enqueueSongs(ids)
+			if (queued > 0) {
+				Logger.i(
+					"DownloadManager",
+					"auto-downloading $queued new song(s) in playlist $playlistId"
+				)
+			}
+		}
+	}
+
+	fun syncAllAutoDownloads() {
+		preferenceManager.downloadedPlaylists.forEach(::syncAutoDownload)
 	}
 
 	fun downloadEntireLibrary() {

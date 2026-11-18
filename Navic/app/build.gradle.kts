@@ -77,7 +77,7 @@ android {
 
 		debug {
 			applicationIdSuffix = ".debug"
-			resValue("string", "app_name", "Navic (Dev)")
+			resValue("string", "app_name", "SOPlayer")
 		}
 	}
 
@@ -162,9 +162,9 @@ androidComponents {
 	onVariants { variant ->
 		variant.outputs.forEach { output ->
 			output.outputFileName = if (variant.flavorName == "fdroid") {
-				"Navic.fdroid.apk"
+				"SOPlayer.fdroid.apk"
 			} else {
-				"Navic.apk"
+				"SOPlayer.apk"
 			}
 		}
 	}

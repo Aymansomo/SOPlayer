@@ -64,6 +64,7 @@ fun LibraryScreen() {
 	val albumsState by albumsViewModel.uiState.collectAsStateWithLifecycle()
 	val albumsLazyItems = albumsState.data?.items?.collectAsLazyPagingItems() ?: return
 
+
 	val playlistsViewModel = koinViewModel<PlaylistListViewModel>(
 		viewModelStoreOwner = persistentViewModelStoreOwner
 	)
@@ -149,6 +150,12 @@ fun LibraryScreen() {
 				scrollBehavior = scrollBehavior,
 				innerPadding = innerPadding,
 				onSetShareId = { shareId = it },
+
+				// Smart playlists the phone server generates (ids start with "smart_").
+				mixPlaylists = playlistsLazyItems.itemSnapshotList.items
+					.filter { it.id.startsWith("smart_") && !it.id.startsWith("smart_trending") },
+				trendingPlaylists = playlistsLazyItems.itemSnapshotList.items
+					.filter { it.id.startsWith("smart_trending") },
 
 				albumsState = albumsLazyItems,
 				selectedAlbum = albumsState.data?.selected,

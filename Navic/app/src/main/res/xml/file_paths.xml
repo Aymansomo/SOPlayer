@@ -3,4 +3,8 @@
 	<cache-path
 		name="shared_images"
 		path="shared_images/" />
+	<!-- downloaded OTA update APKs live directly in context.cacheDir -->
+	<cache-path
+		name="apk_updates"
+		path="." />
 </paths>

@@ -58,6 +58,10 @@ fun buildOkHttpConfig(
 		}
 
 		connectTimeout(3, TimeUnit.SECONDS)
+		// The PC resolves a fresh online song before it can send the first byte
+		// (yt-dlp can take a while); the 10s default timeout failed those
+		// downloads and streams on the first attempt.
+		readTimeout(60, TimeUnit.SECONDS)
 
 		if (trustAllCerts) {
 			val noopTrustManager = NoopTrustManager()

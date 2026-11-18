@@ -103,6 +103,7 @@ import paige.navic.ui.screen.nowPlaying.PlaybackSpeedScreen
 import paige.navic.ui.screen.playlist.PlaylistListScreen
 import paige.navic.ui.screen.queue.QueueScreen
 import paige.navic.ui.screen.radio.RadioListScreen
+import paige.navic.ui.screen.remote.RemoteScreen
 import paige.navic.ui.screen.search.SearchScreen
 import paige.navic.ui.screen.settings.AudioEffectsScreen
 import paige.navic.ui.screen.settings.BottomBarScreen
@@ -411,6 +412,10 @@ private fun entryProvider(
 
 		entry<Screen.Statistics>(metadata = navtabMetadata) { key ->
 			StatisticsScreen(key.nested)
+		}
+
+		entry<Screen.Remote>(metadata = navtabMetadata) { key ->
+			RemoteScreen(nested = false)
 		}
 
 		// settings

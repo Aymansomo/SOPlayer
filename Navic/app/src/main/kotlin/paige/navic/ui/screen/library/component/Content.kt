@@ -56,6 +56,10 @@ fun LibraryScreenContent(
 	innerPadding: PaddingValues,
 	onSetShareId: (String) -> Unit,
 
+	// home rows: server-generated smart playlists (For you, Daily Mixes, Trending)
+	mixPlaylists: List<DomainPlaylist>,
+	trendingPlaylists: List<DomainPlaylist>,
+
 	// albums
 	albumsState: LazyPagingItems<DomainAlbum>,
 	selectedAlbum: DomainAlbum?,
@@ -126,6 +130,49 @@ fun LibraryScreenContent(
 			destination = Screen.AlbumList(true, DomainAlbumListType.Frequent),
 			start = false
 		)
+
+		// "For you" carries the generated mixes (For you + Daily Mix 1-4), each
+		// showing its 2×2 mosaic, exactly like the desktop's home row.
+		horizontalSection(
+			title = R.string.title_for_you,
+			destination = Screen.PlaylistList(true),
+			state = mixPlaylists,
+			seeAll = false
+		) { playlist ->
+			PlaylistListScreenGridItem(
+				modifier = Modifier.animateItem().width(150.dp),
+				tab = "library",
+				playlist = playlist,
+				selected = playlist == selectedPlaylist,
+				onSelect = { onSelectPlaylist(playlist) },
+				onDeselect = { onClearPlaylistSelection() },
+				onSetDeletionId = onDeletePlaylist,
+				onSetShareId = { onSetShareId(it) },
+				onPlayNext = onPlayPlaylistNext,
+				onAddToQueue = onAddPlaylistToQueue
+			)
+		}
+
+		// Live feed from the desktop, not just the local library.
+		horizontalSection(
+			title = R.string.title_trending_now,
+			destination = Screen.PlaylistList(true),
+			state = trendingPlaylists,
+			seeAll = false
+		) { playlist ->
+			PlaylistListScreenGridItem(
+				modifier = Modifier.animateItem().width(150.dp),
+				tab = "library",
+				playlist = playlist,
+				selected = playlist == selectedPlaylist,
+				onSelect = { onSelectPlaylist(playlist) },
+				onDeselect = { onClearPlaylistSelection() },
+				onSetDeletionId = onDeletePlaylist,
+				onSetShareId = { onSetShareId(it) },
+				onPlayNext = onPlayPlaylistNext,
+				onAddToQueue = onAddPlaylistToQueue
+			)
+		}
 
 		horizontalSection(
 			title = R.string.option_sort_recent,

@@ -66,6 +66,7 @@ import paige.navic.ui.icons.outlined.PlaylistAdd
 import paige.navic.ui.icons.outlined.PlaylistRemove
 import paige.navic.ui.icons.outlined.Queue
 import paige.navic.ui.icons.outlined.QueuePlayNext
+import paige.navic.ui.icons.outlined.Send
 import paige.navic.ui.icons.outlined.Share
 import paige.navic.ui.icons.outlined.Speed
 import paige.navic.ui.icons.outlined.Star
@@ -76,6 +77,7 @@ import paige.navic.ui.util.InlineExplicitIcon
 import paige.navic.ui.util.buildSongInfoString
 import paige.navic.ui.util.label
 import paige.navic.ui.util.rememberColorSchemeFromCoverArt
+import paige.navic.ui.util.rememberPlayOnPc
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,6 +115,7 @@ fun SongSheet(
 	val contentPadding = PaddingValues(horizontal = 16.dp)
 
 	val downloadDeletionHandler = rememberDownloadDeletionHandler()
+	val playOnPc = rememberPlayOnPc()
 
 	val colorScheme = if (useSongTheme) rememberColorSchemeFromCoverArt(song.coverArtId) else null
 
@@ -330,6 +333,17 @@ fun SongSheet(
 						contentPadding = contentPadding
 					)
 				}
+
+				ListItem(
+					content = { Text(stringResource(R.string.action_play_on_pc)) },
+					leadingContent = { Icon(Icons.Outlined.Send, null) },
+					onClick = {
+						playOnPc(listOf(song), 0)
+						onDismissRequest()
+					},
+					colors = colors,
+					contentPadding = contentPadding
+				)
 
 				if (onAddToPlaylist != null) {
 					ListItem(

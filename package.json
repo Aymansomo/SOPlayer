@@ -8,6 +8,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
+      "android:install": "node scripts/install-navic.js",
+    "android:store": "node scripts/install-navic.js --app store",
     "dist": "electron-builder",
     "release": "npm version patch && git push --follow-tags",
     "release:minor": "npm version minor && git push --follow-tags",
@@ -16,7 +18,7 @@
   "keywords": [],
   "author": "rootscripts",
   "license": "MIT",
-  "description": "made for humans, Riff - audio player.",
+  "description": "made for humans, SOPlayer - audio player.",
   "devDependencies": {
     "electron": "^41.7.1",
     "electron-builder": "^26.15.3"
@@ -28,7 +30,7 @@
     "hls.js": "^1.7.1",
     "tone": "^15.1.22"
   },
-  "productName": "Riff",
+  "productName": "SOPlayer",
   "homepage": "https://github.com/rootscripts/riff",
   "repository": {
     "type": "git",
@@ -39,8 +41,8 @@
   },
   "build": {
     "appId": "io.github.rootscripts.riff",
-    "productName": "Riff",
-    "artifactName": "${name}-${version}-${os}-${arch}.${ext}",
+    "productName": "SOPlayer",
+    "artifactName": "${productName}-${version}-${os}-${arch}-setup.${ext}",
     "directories": {
       "output": "dist"
     },
@@ -59,13 +61,15 @@
           ]
         }
       ],
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
     },
     "linux": {
       "target": [

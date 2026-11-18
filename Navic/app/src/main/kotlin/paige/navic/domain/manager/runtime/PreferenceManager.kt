@@ -159,6 +159,9 @@ class PreferenceManager(
 	var artistSortType by preference(DomainArtistListType.AlphabeticalByName)
 
 	var playlistSortType by preference(DomainPlaylistListType.Name)
+
+	/** Playlists the user downloaded and wants kept up to date automatically. */
+	var downloadedPlaylists by jsonPreference<Set<String>>(emptySet())
 	var playlistSortReversed by preference(false)
 
 	// these values are bitmasks of `DomainFilter`

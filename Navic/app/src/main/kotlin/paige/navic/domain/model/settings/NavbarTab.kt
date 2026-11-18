@@ -23,6 +23,7 @@ data class NavbarTab(
 		GENRES,
 		SONGS,
 		RADIOS,
-		STATISTICS
+		STATISTICS,
+		REMOTE
 	}
 }

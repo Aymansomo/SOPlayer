@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to Riff - Setup</title>
+  <title>Welcome to SOPlayer - Setup</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -550,7 +550,7 @@
   <main class="card" id="card">
 
     <aside class="brand">
-      <img class="brand-logo" src="../../assets/riff.svg" alt="Riff"
+      <img class="brand-logo" src="../../assets/soplayer.svg" alt="SOPlayer"
            onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%23ffffff\'><path d=\'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z\'/></svg>';">
       <div class="dots"><i></i><i></i><i></i><i></i><i></i></div>
     </aside>
@@ -560,7 +560,7 @@
 
         <!-- 1 · Welcome -->
         <div class="pane" id="step1">
-          <h1 class="app-title">Riff</h1>
+          <h1 class="app-title">SOPlayer</h1>
           <p class="lead" data-i18n>Free, open-source music player.</p>
 
           <div class="features">
@@ -705,15 +705,15 @@
             <div class="head-icon"><svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg></div>
             <div>
               <h2 class="head-title" data-i18n>Add to launcher</h2>
-              <p class="head-sub" id="launcherSub" data-i18n>Open Riff by searching.</p>
+              <p class="head-sub" id="launcherSub" data-i18n>Open SOPlayer by searching.</p>
             </div>
           </div>
 
           <div class="rows">
             <div class="row">
-              <div class="launcher-tile"><img src="../../assets/riff.svg" alt="" onerror="this.onerror=null; this.style.display='none';"></div>
+              <div class="launcher-tile"><img src="../../assets/soplayer.svg" alt="" onerror="this.onerror=null; this.style.display='none';"></div>
               <div class="row-text">
-                <div class="row-title">Riff</div>
+                <div class="row-title">SOPlayer</div>
                 <div class="row-sub" data-i18n>Music player</div>
               </div>
             </div>
@@ -749,7 +749,7 @@
               <button class="sw" role="switch" aria-checked="false" id="discordSwitch"></button>
             </div>
 
-            <div class="row row-block" title="Paste a public playlist link and it becomes a Riff playlist">
+            <div class="row row-block" title="Paste a public playlist link and it becomes a SOPlayer playlist">
               <div class="row-line">
                 <div class="row-icon"><svg viewBox="0 0 24 24"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg></div>
                 <div class="row-text"><div class="row-title" data-i18n>Import from Spotify</div></div>
@@ -853,14 +853,14 @@
 
       async spotifyLookup(url) {
         const port = await this.serverPort();
-        if (!port) return { success: false, error: 'Riff server is not available here' };
+        if (!port) return { success: false, error: 'SOPlayer server is not available here' };
         try {
           const res = await fetch(`http://127.0.0.1:${port}/api/spotify-import?url=${encodeURIComponent(url)}`, {
             headers: { 'X-Riff-Token': this.api?.serverToken || '' }
           });
           return await res.json();
         } catch (e) {
-          return { success: false, error: 'Could not reach the Riff server' };
+          return { success: false, error: 'Could not reach the SOPlayer server' };
         }
       }
     };
@@ -1110,18 +1110,18 @@
 
       if (platform === 'darwin') {
         launcherTitle.textContent = 'Applications folder';
-        launcherSub.textContent = 'Keep Riff in Applications for Launchpad and Spotlight.';
-        setLauncherUnavailable('Drag Riff into Applications');
+        launcherSub.textContent = 'Keep SOPlayer in Applications for Launchpad and Spotlight.';
+        setLauncherUnavailable('Drag SOPlayer into Applications');
         return;
       }
 
       if (platform === 'win32') {
         launcherTitle.textContent = 'Start menu shortcut';
-        launcherSub.textContent = 'Open Riff by searching in Start.';
+        launcherSub.textContent = 'Open SOPlayer by searching in Start.';
         launcherRowSub.textContent = '';
       } else {
         launcherTitle.textContent = 'Applications menu entry';
-        launcherSub.textContent = 'Add Riff to your applications menu.';
+        launcherSub.textContent = 'Add SOPlayer to your applications menu.';
         launcherRowSub.textContent = '';
       }
 

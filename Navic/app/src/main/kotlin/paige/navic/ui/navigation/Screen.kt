@@ -144,6 +144,10 @@ sealed interface Screen : NavKey {
 		val nested: Boolean = false
 	) : Screen
 
+	@Immutable
+	@Serializable
+	data object Remote : Screen
+
 	// settings
 	@Immutable
 	@Serializable

@@ -8,6 +8,7 @@ package paige.navic.domain.repository
 
 import androidx.paging.PagingData
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import paige.navic.database.dao.SongDao
 import paige.navic.database.entity.SyncActionType
 import paige.navic.database.mapper.toDomainModel
@@ -25,6 +26,15 @@ class SongRepository(
 	private val syncManager: SyncManager
 ) {
 	suspend fun getSongById(id: String) = songDao.getSongById(id)?.toDomainModel()
+
+	/**
+	 * Every starred song, for the Starred screen. It used to be paged, which left
+	 * the screen showing only the first rows of a horizontally scrolling grid
+	 * while the rest of the liked songs sat off-screen.
+	 */
+	fun getStarredSongs(): Flow<List<DomainSong>> = songDao
+		.getStarredSongs()
+		.map { songs -> songs.map { it.toDomainModel() } }
 
 	suspend fun getRandomSongsList(count: Int): List<DomainSong> {
 		return songDao.getRandomSongsList(count).map { it.toDomainModel() }
@@ -55,7 +65,12 @@ class SongRepository(
 		reversed: Boolean = false,
 		filters: Set<DomainFilter> = emptySet()
 	): Flow<PagingData<DomainSong>> {
-		dbRepository.syncLibrarySongs().getOrThrow()
+		if (filters.contains(DomainFilter.Starred)) {
+			// Stars made on the PC/phone, without re-downloading the library.
+			dbRepository.syncStarred().getOrThrow()
+		} else {
+			dbRepository.syncLibrarySongs().getOrThrow()
+		}
 		return getLocalData(listType, reversed, filters)
 	}
 
@@ -66,7 +81,10 @@ class SongRepository(
 		filters: Set<DomainFilter>
 	): Flow<PagingData<DomainSong>> {
 		val localData = getLocalData(listType, reversed, filters)
-		return if (fullRefresh) {
+		// Stars are account state, not library pages: a Starred list opened from
+		// anywhere (the Library shortcuts included) must ask the server first,
+		// otherwise a star made on the PC only appeared after a full sync.
+		return if (fullRefresh || filters.contains(DomainFilter.Starred)) {
 			refreshLocalData(listType, reversed, filters)
 		} else {
 			localData

@@ -20,6 +20,7 @@ import paige.navic.ui.icons.outlined.Genre
 import paige.navic.ui.icons.outlined.LibraryMusic
 import paige.navic.ui.icons.outlined.Note
 import paige.navic.ui.icons.outlined.PlaylistPlay
+import paige.navic.ui.icons.outlined.QueuePlayNext
 import paige.navic.ui.icons.outlined.Radio
 import paige.navic.ui.icons.outlined.Search
 import paige.navic.ui.icons.outlined.Statistics
@@ -81,5 +82,10 @@ enum class NavigationTab(
 		destination = Screen.Statistics(),
 		iconFilled = Icons.Outlined.Statistics,
 		label = R.string.title_statistics
+	),
+	REMOTE(
+		destination = Screen.Remote,
+		iconFilled = Icons.Outlined.QueuePlayNext,
+		label = R.string.title_remote
 	)
 }

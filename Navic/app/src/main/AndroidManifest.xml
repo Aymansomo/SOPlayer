@@ -12,6 +12,9 @@
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
+	<!-- lets the in-app updater hand a downloaded APK to the system installer -->
+	<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
 	<!-- needed for the equalizer feature, for some reason -->
 	<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
@@ -46,6 +49,8 @@
 		android:theme="@style/Theme.Navic"
 		android:usesCleartextTraffic="true"
 		tools:targetApi="33">
+		<!-- Launched only through the icon aliases below: a LAUNCHER filter here
+		     as well would put two icons of the same package in the app drawer. -->
 		<activity
 			android:name=".MainActivity"
 			android:exported="true"

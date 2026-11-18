@@ -2705,7 +2705,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const rawArtist = (typeof current.artist === 'string' ? current.artist.trim() : '');
       const title = rawTitle || 'Unknown track';
       const artist = rawArtist || 'Unknown artist';
-      const album = current.album || 'Riff';
+      const album = current.album || 'SOPlayer';
       const thumb = (typeof getTrackThumbUrl === 'function' ? getTrackThumbUrl(current) : '') || current.thumbnail || current.cover || '';
       const artwork = getMediaArtwork(thumb);
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -9354,9 +9354,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Display composer, lyricist, producer, and audio source in right panel': 'Отображать композитора, автора текста, продюсера и источник аудио в правой панели',
       'Show track source logo next to artist': 'Показывать логотип источника рядом с артистом',
       'Show platform badge next to artist in track lists and player bar': 'Показывать значок платформы рядом с артистом в списках треков и плеере',
-      'Riff Library': 'Библиотека Riff',
+      'SOPlayer Library': 'Библиотека SOPlayer',
       'Combines YouTube Music and SoundCloud into a single unified search source': 'Объединяет YouTube Music и SoundCloud в единый источник поиска',
-      'Riff Library hybrid streaming': 'Гибридный стриминг Riff Library',
+      'SOPlayer Library hybrid streaming': 'Гибридный стриминг SOPlayer Library',
       'Cross-fallback and race YouTube Music and SoundCloud streams during playback': 'Перекрёстный фолбэк и параллельный запрос потоков YouTube Music и SoundCloud при воспроизведении',
       'Audio source': 'Источник аудио',
       'Performed by': 'Исполнитель',
@@ -9387,10 +9387,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Display name': 'Отображаемое имя',
       'Reset avatar': 'Сбросить аватар',
       'Account backup (.rfacc)': 'Резервная копия аккаунта (.rfacc)',
-      'Export Riff account (.rfacc)': 'Экспорт аккаунта Riff (.rfacc)',
-      'Import Riff account (.rfacc)': 'Импорт аккаунта Riff (.rfacc)',
+      'Export SOPlayer account (.rfacc)': 'Экспорт аккаунта SOPlayer (.rfacc)',
+      'Import SOPlayer account (.rfacc)': 'Импорт аккаунта SOPlayer (.rfacc)',
       'Save your profile, playlists, favorites, history, and settings to a file': 'Сохраните профиль, плейлисты, избранное, историю и настройки в файл',
-      'Restore your entire Riff account from a .rfacc backup file': 'Восстановите весь аккаунт Riff из файла резервной копии .rfacc',
+      'Restore your entire SOPlayer account from a .rfacc backup file': 'Восстановите весь аккаунт SOPlayer из файла резервной копии .rfacc',
       'Connected services & integrations': 'Подключённые сервисы и интеграции',
       'Manage Spotify, YouTube, Last.fm, Yandex Music, and Discord RPC': 'Управление Spotify, YouTube, Last.fm, Яндекс Музыкой и Discord RPC',
       'Open Integrations': 'Открыть интеграции',
@@ -9517,7 +9517,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Show visualizer in Now Playing panel': 'Визуализатор в панели Now Playing',
       'Remove from playlist': 'Удалить из плейлиста',
       'Remove from queue': 'Удалить из очереди',
-      'Remove from Riff': 'Удалить из Riff',
+      'Remove from SOPlayer': 'Удалить из SOPlayer',
       'Favorite': 'В избранное',
       'Remove from Favorites': 'Удалить из избранного',
       'Pin to top': 'Закрепить наверху',
@@ -9586,9 +9586,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Block': 'Заблокувати',
       'Blocked': 'Заблоковано',
       'About the artist': 'Про виконавця',
-      'Riff Library': 'Бібліотека Riff',
+      'SOPlayer Library': 'Бібліотека SOPlayer',
       'Combines YouTube Music and SoundCloud into a single unified search source': 'Об’єднує YouTube Music та SoundCloud в єдине джерело пошуку',
-      'Riff Library hybrid streaming': 'Гібридний стрімінг Riff Library',
+      'SOPlayer Library hybrid streaming': 'Гібридний стрімінг SOPlayer Library',
       'Cross-fallback and race YouTube Music and SoundCloud streams during playback': 'Перехресний фолбек і паралельний запит потоків YouTube Music та SoundCloud при відтворенні',
       'Play': 'Слухати',
       'Download all': 'Завантажити все',
@@ -9611,10 +9611,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Display name': 'Імʼя користувача',
       'Reset avatar': 'Скинути аватар',
       'Account backup (.rfacc)': 'Резервна копія акаунту (.rfacc)',
-      'Export Riff account (.rfacc)': 'Експорт акаунту Riff (.rfacc)',
-      'Import Riff account (.rfacc)': 'Імпорт акаунту Riff (.rfacc)',
+      'Export SOPlayer account (.rfacc)': 'Експорт акаунту SOPlayer (.rfacc)',
+      'Import SOPlayer account (.rfacc)': 'Імпорт акаунту SOPlayer (.rfacc)',
       'Save your profile, playlists, favorites, history, and settings to a file': 'Збережіть профіль, плейлісти, улюблене, історію та налаштування у файл',
-      'Restore your entire Riff account from a .rfacc backup file': 'Відновіть увесь акаунт Riff з файлу резервної копії .rfacc',
+      'Restore your entire SOPlayer account from a .rfacc backup file': 'Відновіть увесь акаунт SOPlayer з файлу резервної копії .rfacc',
       'Connected services & integrations': 'Підключені сервіси та інтеграції',
       'Manage Spotify, YouTube, Last.fm, Yandex Music, and Discord RPC': 'Керування Spotify, YouTube, Last.fm, Яндекс Музикою та Discord RPC',
       'Open Integrations': 'Відкрити інтеграції',
@@ -9663,7 +9663,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Recommendations reset': 'Рекомендації скинуто',
       'Remove from playlist': 'Видалити з плейлиста',
       'Remove from queue': 'Видалити з черги',
-      'Remove from Riff': 'Видалити з Riff',
+      'Remove from SOPlayer': 'Видалити з SOPlayer',
       'Favorite': 'В обране',
       'Remove from Favorites': 'Видалити з обраного',
       'Pin to top': 'Закріпити вгорі',
@@ -16976,7 +16976,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       items.push({
         id: 'remove-local',
         danger: true,
-        label: 'Remove from Riff',
+        label: 'Remove from SOPlayer',
         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>',
         action: () => {
           removeTracksFromLocalLibrary([track]);
@@ -26246,7 +26246,7 @@ function bindCoverHoldZoom(wrapEl) {
     item.id = 'setting-riff-home-icon';
     item.innerHTML = `
       <div class="setting-item-top" style="align-items: center;">
-        <span class="setting-name" data-i18n>Riff logo on Home button</span>
+        <span class="setting-name" data-i18n>SOPlayer logo on Home button</span>
         <button type="button" class="effect-switch-btn ${isRiff ? 'active' : ''}" id="btn-setting-riff-home-icon">
           <span class="thumb"></span>
         </button>
@@ -26639,7 +26639,7 @@ function bindCoverHoldZoom(wrapEl) {
 
       updateAboutSupportLottieState(isAboutTabActive());
     } catch (err) {
-      console.warn('[Riff] Failed to load duck lottie animation:', err);
+      console.warn('[SOPlayer] Failed to load duck lottie animation:', err);
     }
   }
 
@@ -26665,7 +26665,7 @@ function bindCoverHoldZoom(wrapEl) {
         </div>
         <div class="support-me-content">
           <span class="support-me-title setting-name">Support me!</span>
-          <span class="support-me-desc setting-hint">Riff is created and maintained by one person. If you enjoy using it, any small tip like $1 helps keep the project going!</span>
+          <span class="support-me-desc setting-hint">SOPlayer is created and maintained by one person. If you enjoy using it, any small tip like $1 helps keep the project going!</span>
           <div class="support-me-actions">
             <a href="https://ko-fi.com/rootlesszen/" target="_blank" rel="noopener noreferrer" class="btn-pill-primary support-me-btn" id="btn-support-buy-coffee" style="text-decoration: none !important; border: none !important; outline: none !important;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="flex-shrink:0;">
@@ -29825,6 +29825,8 @@ function bindCoverHoldZoom(wrapEl) {
       addFolder: document.getElementById('btn-phone-add-folder'),
       libraryStatus: document.getElementById('phone-library-status'),
       scan: document.getElementById('btn-phone-scan'),
+      online: document.getElementById('btn-phone-online'),
+      onlineStatus: document.getElementById('phone-online-status'),
     };
 
     let config = null;
@@ -29931,6 +29933,26 @@ function bindCoverHoldZoom(wrapEl) {
         if (lib && lib.error) els.libraryStatus.textContent += ` — ${lib.error}`;
       }
 
+      const onlineState = (status && status.online) || null;
+      const onlineOn = config.onlineEnabled !== false;
+      if (els.online) {
+        els.online.classList.toggle('active', onlineOn);
+        els.online.disabled = busy;
+      }
+      if (els.onlineStatus) {
+        if (!onlineState) {
+          els.onlineStatus.textContent = '';
+        } else if (!onlineState.available) {
+          els.onlineStatus.textContent = 'yt-dlp was not found on this PC, so online songs are unavailable.';
+        } else if (!onlineOn) {
+          els.onlineStatus.textContent = 'Off — only your local music folders are served.';
+        } else if (onlineState.tracks) {
+          els.onlineStatus.textContent = `${onlineState.tracks} online songs saved · find more with search in Navic.`;
+        } else {
+          els.onlineStatus.textContent = 'On — search in Navic to find YouTube and SoundCloud songs.';
+        }
+      }
+
       const folders = Array.isArray(config.folders) ? config.folders : [];
       els.folders.innerHTML = '';
       if (!folders.length) {
@@ -29989,6 +30011,23 @@ function bindCoverHoldZoom(wrapEl) {
       busy = false;
       render();
     });
+
+    if (els.online) {
+      els.online.addEventListener('click', async () => {
+        if (busy || !config) return;
+        busy = true;
+        testMsg = '';
+        render();
+        try {
+          const res = await api.setMobileConfig({ onlineEnabled: config.onlineEnabled === false });
+          if (res) { config = res.config || config; status = res.status || status; }
+        } catch (err) {
+          showTest(`Could not change online songs: ${err && err.message ? err.message : err}`, false);
+        }
+        busy = false;
+        render();
+      });
+    }
 
     els.copyUrl.addEventListener('click', async () => {
       const url = primaryUrl();
@@ -30087,6 +30126,342 @@ function bindCoverHoldZoom(wrapEl) {
     }, 8000);
 
     refresh();
+  })();
+
+  // -------------------------------------------------------------------------
+  // Phone collection sync (favourites / playlists ↔ Navic, Phase 3)
+  // -------------------------------------------------------------------------
+  (function initPhoneCollectionSync() {
+    const api = window.electronAPI;
+    if (!api || !api.syncMobileCollection) return;
+
+    // Must mirror keyForTrack() in src/server/mobile/collection.js so both
+    // sides agree on the identity of a track.
+    function phoneTrackKey(track) {
+      if (!track) return '';
+      const platform = String(track.platform || '').toLowerCase();
+      const id = track.id != null ? String(track.id) : '';
+      if (platform === 'local' || track.path) {
+        if (track.path) return 'local:' + String(track.path).replace(/\\/g, '/').toLowerCase();
+        if (id) return 'local:' + id;
+      }
+      if (platform === 'soundcloud' && id) return 'soundcloud:' + id;
+      if ((platform === 'youtube' || platform === 'ytmusic' || platform === 'yt' || !platform) && id) {
+        return 'youtube:' + id;
+      }
+      if (id) return platform + ':' + id;
+      if (track.url) return 'url:' + String(track.url).toLowerCase();
+      return '';
+    }
+
+    function applyPhoneCollection(collection) {
+      if (!collection || !Array.isArray(collection.favorites) || !Array.isArray(collection.playlists)) return;
+
+      const existingFavs = new Map();
+      for (const track of state.favorites || []) {
+        const key = phoneTrackKey(track);
+        if (key) existingFavs.set(key, track);
+      }
+      const nextFavs = [];
+      const seen = new Set();
+      for (const item of collection.favorites) {
+        const key = item.key || phoneTrackKey(item);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        const existing = existingFavs.get(key);
+        const track = existing
+          ? Object.assign({}, existing, { addedAt: item.addedAt || existing.addedAt })
+          : Object.assign({}, item);
+        delete track.key;
+        nextFavs.push(track);
+      }
+      state.favorites = nextFavs;
+      localStorage.setItem('devsize_favorites', JSON.stringify(state.favorites));
+
+      const existingPls = new Map((state.playlists || []).map((pl) => [pl.id, pl]));
+      const nextPls = [];
+      for (const incoming of collection.playlists) {
+        const existing = existingPls.get(incoming.id);
+        const previousTracks = new Map();
+        if (existing && Array.isArray(existing.tracks)) {
+          for (const track of existing.tracks) {
+            const key = phoneTrackKey(track);
+            if (key) previousTracks.set(key, track);
+          }
+        }
+        const tracks = [];
+        for (const item of incoming.tracks || []) {
+          const key = item.key || phoneTrackKey(item);
+          const previous = previousTracks.get(key);
+          const track = previous
+            ? Object.assign({}, previous, { addedAt: item.addedAt || previous.addedAt })
+            : Object.assign({}, item);
+          delete track.key;
+          tracks.push(track);
+        }
+        nextPls.push(existing
+          ? Object.assign({}, existing, { name: incoming.name, tracks })
+          : { id: incoming.id, name: incoming.name, tracks });
+      }
+      state.playlists = nextPls;
+      localStorage.setItem('devsize_playlists', JSON.stringify(state.playlists));
+      if (state.currentPlaylistId) {
+        state.currentPlaylist = state.playlists.find((pl) => pl.id === state.currentPlaylistId) || state.currentPlaylist;
+      }
+
+      try { if (typeof renderPlaylistsList === 'function') renderPlaylistsList(); } catch (_) {}
+      try { if (typeof updateFavoritesBadge === 'function') updateFavoritesBadge(); } catch (_) {}
+      try {
+        if (state.currentView === 'favorites' && typeof renderFavoritesView === 'function') {
+          renderFavoritesView();
+        }
+      } catch (_) {}
+    }
+
+    // The phone only needs the identity of a played track, not the whole object.
+    function slimPhoneTrack(track) {
+      if (!track || typeof track !== 'object') return null;
+      return {
+        id: track.id != null ? String(track.id) : '',
+        title: track.title || '',
+        artist: track.artist || '',
+        album: track.album || '',
+        duration: Number(track.duration) || 0,
+        platform: track.platform || '',
+        thumbnail: track.thumbnail || track.cover || '',
+        url: track.url || '',
+        playedAt: Number(track.playedAt) || 0,
+      };
+    }
+
+    // The Daily Mixes generated here, so the phone shows the same mixes the PC
+    // does instead of guessing from its own (much shorter) history.
+    function phoneMixesPayload() {
+      try {
+        const raw = localStorage.getItem('riff_daily_mixes');
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.mixes) || !parsed.mixes.length) return null;
+        return {
+          day: parsed.day || '',
+          mixes: parsed.mixes.map((mix, index) => ({
+            name: mix && mix.title ? String(mix.title) : 'Daily Mix ' + (index + 1),
+            artists: Array.isArray(mix && mix.artists) ? mix.artists.slice(0, 8) : [],
+            tracks: (Array.isArray(mix && mix.tracks) ? mix.tracks : [])
+              .map(slimPhoneTrack)
+              .filter(Boolean),
+          })),
+        };
+      } catch (_) {
+        return null;
+      }
+    }
+
+    // A cheap fingerprint of everything the phone needs. The 15 s heartbeat
+    // ships this string alone while nothing changed; the whole collection (and
+    // the merge, snapshot and disk write it costs on the other side) only moves
+    // when the fingerprint differs.
+    function hashPhoneKeyText(text, seed) {
+      let hash = seed >>> 0;
+      for (let i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) | 0;
+      return hash;
+    }
+
+    function phoneCollectionSignature() {
+      const favorites = state.favorites || [];
+      let favoritesHash = favorites.length;
+      for (const track of favorites) {
+        favoritesHash = hashPhoneKeyText(
+          phoneTrackKey(track) + ':' + (Number(track && track.addedAt) || 0),
+          favoritesHash
+        );
+      }
+
+      const playlists = state.playlists || [];
+      let playlistHash = playlists.length;
+      for (const pl of playlists) {
+        playlistHash = hashPhoneKeyText(String(pl && pl.id) + '|' + String(pl && pl.name), playlistHash);
+        const tracks = Array.isArray(pl && pl.tracks) ? pl.tracks : [];
+        playlistHash = hashPhoneKeyText('#' + tracks.length, playlistHash);
+        for (const track of tracks) playlistHash = hashPhoneKeyText(phoneTrackKey(track), playlistHash);
+      }
+
+      let historyHash = 0;
+      for (const track of state.history || []) {
+        historyHash = hashPhoneKeyText(
+          phoneTrackKey(track) + ':' + (Number(track && track.playedAt) || 0),
+          historyHash
+        );
+      }
+
+      const mixes = phoneMixesPayload();
+      const mixesKey = mixes
+        ? String(mixes.day) + '|' + mixes.mixes.map((mix) => mix.name + ':' + mix.tracks.length).join(',')
+        : '';
+
+      return [favoritesHash, playlistHash, historyHash, hashPhoneKeyText(mixesKey, 0)].join('.');
+    }
+
+    let collectionSignature = '';
+    let syncing = false;
+    function syncNow() {
+      if (syncing) return Promise.resolve();
+      const signature = phoneCollectionSignature();
+      const full = signature !== collectionSignature;
+      const payload = full
+        ? {
+          signature,
+          favorites: state.favorites || [],
+          playlists: state.playlists || [],
+          history: (state.history || []).slice(0, 100).map(slimPhoneTrack).filter(Boolean),
+          mixes: phoneMixesPayload(),
+        }
+        : { signature };
+      syncing = true;
+      return api.syncMobileCollection(payload).then((res) => {
+        syncing = false;
+        if (full) collectionSignature = signature;
+        if (!res || !res.changed || !res.collection) return;
+        // Adopting the phone's state changes local state, so the next tick is a
+        // full push again and the two sides settle.
+        applyPhoneCollection(res.collection);
+      }).catch(() => { syncing = false; });
+    }
+
+    window.__riffPhoneSync = syncNow;
+    setTimeout(syncNow, 5000);
+    setInterval(() => { if (!document.hidden) syncNow(); }, 15000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) syncNow(); });
+  })();
+
+  // -------------------------------------------------------------------------
+  // Phone remote control bridge (Phase 5)
+  // -------------------------------------------------------------------------
+  (function initPhoneRemoteBridge() {
+    const api = window.electronAPI;
+    if (!api || !api.onMobileCommand || !api.reportMobileRemoteState) return;
+
+    let reporting = false;
+    function remoteAudio() {
+      return el.nativeAudio || null;
+    }
+
+    function reportRemoteState() {
+      if (reporting) return;
+      reporting = true;
+      try {
+        const audio = remoteAudio();
+        const track = state.currentTrack;
+        const duration = audio && Number.isFinite(audio.duration) && audio.duration > 0
+          ? audio.duration
+          : (track ? Number(track.duration) || 0 : 0);
+        api.reportMobileRemoteState({
+          track: track ? {
+            title: track.title,
+            artist: track.artist,
+            album: track.album,
+            thumbnail: track.thumbnail || '',
+            duration,
+            platform: track.platform || '',
+          } : null,
+          playing: !!(audio && !audio.paused && !audio.ended),
+          position: audio && Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
+          duration,
+          volume: Number(state.volume) || 0,
+          muted: !!state.isMuted,
+          liked: !!(track && (state.favorites || []).some(f => isSameTrack(f, track))),
+        });
+      } catch (_) {}
+      reporting = false;
+    }
+
+    /**
+     * The phone sends the Subsonic ids of what it wants the PC to play; the main
+     * process resolves them into normal Riff tracks (local files by path, online
+     * songs by video id) so they can go straight into the queue.
+     */
+    function playRemoteTracks(command) {
+      const tracks = Array.isArray(command && command.tracks) ? command.tracks : [];
+      const ids = tracks.map((track) => String((track && track.id) || '')).filter(Boolean);
+      if (!ids.length || typeof api.resolveMobileTracks !== 'function') return;
+      api.resolveMobileTracks(ids, Math.max(0, Number(command.index) || 0)).then((res) => {
+        const queue = res && Array.isArray(res.tracks) ? res.tracks : [];
+        if (!queue.length) return;
+        // The main process already translated the phone's index, because
+        // resolving drops ids this desktop does not know.
+        const resolved = res && Number.isInteger(res.index) ? res.index : 0;
+        const index = Math.min(Math.max(0, resolved), queue.length - 1);
+        playTrack(queue[index], queue, index, 'remote');
+      }).catch(() => {});
+    }
+
+    function applyRemoteCommand(command) {
+      if (!command || !command.action) return;
+      const audio = remoteAudio();
+      try {
+        switch (command.action) {
+          case 'playtracks':
+            playRemoteTracks(command);
+            break;
+          case 'playpause':
+            togglePlayPause();
+            break;
+          case 'play':
+            if (audio && audio.paused) togglePlayPause();
+            break;
+          case 'pause':
+            if (audio && !audio.paused) togglePlayPause();
+            break;
+          case 'next':
+            playNext();
+            break;
+          case 'prev':
+            playPrev();
+            break;
+          case 'seek': {
+            if (!audio) break;
+            const known = Number.isFinite(audio.duration) && audio.duration > 0
+              ? audio.duration
+              : (state.currentTrack ? Number(state.currentTrack.duration) || 0 : 0);
+            const target = Math.max(0, Number(command.value) || 0);
+            audio.currentTime = known > 0 ? Math.min(target, known) : target;
+            break;
+          }
+          case 'volume': {
+            const next = Math.min(1, Math.max(0, Number(command.value) || 0));
+            state.volume = next;
+            state.isMuted = false;
+            if (el.volumeSlider) {
+              el.volumeSlider.value = String(next);
+              el.volumeSlider.dispatchEvent(new Event('input'));
+            }
+            break;
+          }
+          case 'mute':
+            state.isMuted = !state.isMuted;
+            if (typeof persistVolumeState === 'function') persistVolumeState();
+            if (typeof applyAudioSettings === 'function') applyAudioSettings();
+            break;
+          case 'like':
+            if (state.currentTrack && !(state.favorites || []).some(f => isSameTrack(f, state.currentTrack))) {
+              toggleFavoriteTrack(state.currentTrack);
+            }
+            break;
+          case 'unlike':
+            if (state.currentTrack && (state.favorites || []).some(f => isSameTrack(f, state.currentTrack))) {
+              toggleFavoriteTrack(state.currentTrack);
+            }
+            break;
+          default:
+            break;
+        }
+      } catch (_) {}
+      reportRemoteState();
+    }
+
+    api.onMobileCommand(applyRemoteCommand);
+    reportRemoteState();
+    setInterval(reportRemoteState, 1000);
   })();
 
   document.querySelectorAll('.settings-home-card').forEach(card => {
@@ -30353,7 +30728,7 @@ function bindCoverHoldZoom(wrapEl) {
     if (loadedPlugins.has(p.file)) return;
     try {
       const api = createPluginApi(p);
-      const fn = new Function('Riff', 'plugin', `${p.code}\n//# sourceURL=riff-plugin-${p.file}`);
+      const fn = new Function('Riff', 'SOPlayer', 'plugin', `${p.code}\n//# sourceURL=riff-plugin-${p.file}`);
       const result = fn(api, api.plugin);
       loadedPlugins.set(p.file, { stop: result && typeof result.stop === 'function' ? result.stop : null });
     } catch (e) { reportPluginError(p.file, e); }
@@ -30366,7 +30741,7 @@ function bindCoverHoldZoom(wrapEl) {
     document.querySelectorAll(`style[data-plugin="${p.file}"]`).forEach((n) => n.remove());
     const hadStop = !!(entry && entry.stop);
     loadedPlugins.delete(p.file);
-    if (!silent && !hadStop) showToast(`Restart Riff to fully unload "${p.name}"`, 'info');
+    if (!silent && !hadStop) showToast(`Restart SOPlayer to fully unload "${p.name}"`, 'info');
   }
   let pluginsCache = [];
   function renderPluginCards() {
@@ -30833,7 +31208,7 @@ function bindCoverHoldZoom(wrapEl) {
       const btnConfirm = document.getElementById('btn-confirm-spotify-import');
       if (btnConfirm) btnConfirm.click();
     }
-    showToast('Welcome to Riff!', 'info');
+    showToast('Welcome to SOPlayer!', 'info');
   }
   if (window.electronAPI && window.electronAPI.onWelcomeResult) window.electronAPI.onWelcomeResult((d) => applyWelcomeResult(d));
 
@@ -31821,7 +32196,7 @@ function bindCoverHoldZoom(wrapEl) {
           restoreButton();
         } else {
           restoreButton();
-          showToast('You are using the latest version of Riff!', 'success');
+          showToast('You are using the latest version of SOPlayer!', 'success');
         }
       } catch (err) {
         restoreButton();
@@ -31921,7 +32296,7 @@ function bindCoverHoldZoom(wrapEl) {
         const wasManual = manualUpdateCheck;
         restoreButton();
         if (wasManual) {
-          showToast('You are using the latest version of Riff!', 'success');
+          showToast('You are using the latest version of SOPlayer!', 'success');
         }
       });
     }
@@ -35062,7 +35437,7 @@ function bindCoverHoldZoom(wrapEl) {
     } catch (e) {}
 
     const payload = {
-      app: 'Riff',
+      app: 'SOPlayer',
       appVersion: appVer,
       exportedAt: new Date().toISOString(),
       playlists: valid.map(pl => ({
@@ -35540,7 +35915,7 @@ function bindCoverHoldZoom(wrapEl) {
     btnImportJsonPlaylists.addEventListener('click', triggerJsonPlaylistImport);
   }
 
-  function confirmChain({ title = 'Import Riff account', message = 'Importing an account will replace your existing playlists, favorites, custom styles, and settings. Riff will restart immediately.', confirmLabel = 'Import & Restart', seconds = 3 } = {}) {
+  function confirmChain({ title = 'Import SOPlayer account', message = 'Importing an account will replace your existing playlists, favorites, custom styles, and settings. SOPlayer will restart immediately.', confirmLabel = 'Import & Restart', seconds = 3 } = {}) {
     return new Promise((resolve) => {
       let modal = document.getElementById('confirm-chain-modal');
       if (!modal) {
@@ -35610,7 +35985,7 @@ function bindCoverHoldZoom(wrapEl) {
         }
       } catch (_) {}
       const payload = {
-        app: 'Riff',
+        app: 'SOPlayer',
         version: '1.0',
         exportedAt: Date.now(),
         localStorage: dump
@@ -35630,8 +36005,8 @@ function bindCoverHoldZoom(wrapEl) {
   if (btnImportAccount) {
     btnImportAccount.onclick = async () => {
       const confirmed = await confirmChain({
-        title: 'Import Riff account',
-        message: 'Importing an account will replace your existing playlists, favorites, custom styles, and settings. Riff will restart immediately.',
+        title: 'Import SOPlayer account',
+        message: 'Importing an account will replace your existing playlists, favorites, custom styles, and settings. SOPlayer will restart immediately.',
         confirmLabel: 'Import & Restart',
         seconds: 3
       });
@@ -40284,7 +40659,7 @@ function bindCoverHoldZoom(wrapEl) {
       }
       const move = window.confirm(
         'Move your existing music to the new folder?\n\n' +
-        'OK: move all downloaded and imported files, then restart Riff.\n' +
+        'OK: move all downloaded and imported files, then restart SOPlayer.\n' +
         'Cancel: switch to the new folder without moving (files stay in the old one).'
       );
       btnChangeMusicFolder.disabled = true;
@@ -40304,7 +40679,7 @@ function bindCoverHoldZoom(wrapEl) {
         return;
       }
       btnChangeMusicFolder.textContent = 'Restarting...';
-      showToast('Restarting Riff...');
+      showToast('Restarting SOPlayer...');
       setTimeout(() => { if (window.electronAPI.restartApp) window.electronAPI.restartApp(); }, 400);
     });
   }

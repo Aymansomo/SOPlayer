@@ -23,36 +23,52 @@ class PlaylistRepository(
 	private suspend fun getLocalData(
 		listType: DomainPlaylistListType,
 		reversed: Boolean,
-		filters: Set<DomainFilter> = emptySet()
+		filters: Set<DomainFilter> = emptySet(),
+		hideSmart: Boolean = false
 	): Flow<PagingData<DomainPlaylist>> = createPagedFlow(
 		isRandom = (listType == DomainPlaylistListType.Random),
-		getRandomIds = { playlistDao.getPlaylistIdsByQuery(listType.toSqlQuery(filters = filters, idsOnly = true)) },
+		getRandomIds = {
+			playlistDao.getPlaylistIdsByQuery(
+				listType.toSqlQuery(filters = filters, idsOnly = true, hideSmart = hideSmart)
+			)
+		},
 		getEntityId = { it.playlist.playlistId },
 		fetchByIds = playlistDao::getPlaylistsByIds,
-		getStandardQuery = { playlistDao.getPlaylistsByQuery(listType.toSqlQuery(reversed, filters)) },
+		getStandardQuery = {
+			playlistDao.getPlaylistsByQuery(listType.toSqlQuery(reversed, filters, hideSmart = hideSmart))
+		},
 		toDomain = { it.toDomainModel() }
 	)
 
 	private suspend fun refreshLocalData(
 		listType: DomainPlaylistListType,
 		reversed: Boolean,
-		filters: Set<DomainFilter> = emptySet()
+		filters: Set<DomainFilter> = emptySet(),
+		hideSmart: Boolean = false
 	): Flow<PagingData<DomainPlaylist>> {
 		dbRepository.syncPlaylists().getOrThrow().forEach { playlist ->
 			dbRepository.syncPlaylistSongs(playlist.playlistId).getOrThrow()
 		}
-		return getLocalData(listType, reversed, filters)
+		return getLocalData(listType, reversed, filters, hideSmart)
+	}
+
+	/** Every playlist, for pickers (such as "play this on the PC"). */
+	suspend fun getAllPlaylists(): List<DomainPlaylist> {
+		val ids = playlistDao.getAllPlaylistIds()
+		if (ids.isEmpty()) return emptyList()
+		return playlistDao.getPlaylistsByIds(ids).map { it.toDomainModel() }
 	}
 
 	suspend fun getPlaylists(
 		fullRefresh: Boolean,
 		listType: DomainPlaylistListType,
 		reversed: Boolean,
-		filters: Set<DomainFilter> = emptySet()
+		filters: Set<DomainFilter> = emptySet(),
+		hideSmart: Boolean = false
 	): Flow<PagingData<DomainPlaylist>> {
-		val localData = getLocalData(listType, reversed, filters)
+		val localData = getLocalData(listType, reversed, filters, hideSmart)
 		return if (fullRefresh) {
-			refreshLocalData(listType, reversed, filters)
+			refreshLocalData(listType, reversed, filters, hideSmart)
 		} else {
 			localData
 		}

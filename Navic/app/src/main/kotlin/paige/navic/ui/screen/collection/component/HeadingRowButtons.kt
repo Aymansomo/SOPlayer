@@ -37,6 +37,7 @@ import paige.navic.R
 import paige.navic.database.entity.DownloadStatus
 import paige.navic.domain.manager.session.DownloadManager
 import paige.navic.domain.manager.ui.SnackBarManager
+import paige.navic.domain.model.DomainPlaylist
 import paige.navic.domain.model.DomainSongCollection
 import paige.navic.playback.MediaPlayer
 import paige.navic.ui.component.dialog.DeleteDownloadTarget
@@ -48,11 +49,14 @@ import paige.navic.ui.icons.outlined.Delete
 import paige.navic.ui.icons.outlined.Download
 import paige.navic.ui.icons.outlined.DownloadOff
 import paige.navic.ui.icons.outlined.Shuffle
+import paige.navic.ui.icons.outlined.Sort
 import paige.navic.ui.theme.defaultFont
 
 @Composable
 fun CollectionDetailScreenHeadingRowButtons(
-	collection: DomainSongCollection
+	collection: DomainSongCollection,
+	sortLabel: String? = null,
+	onSortClick: (() -> Unit)? = null
 ) {
 	val player = koinInject<MediaPlayer>()
 	val snackBarManager = koinInject<SnackBarManager>()
@@ -123,6 +127,11 @@ fun CollectionDetailScreenHeadingRowButtons(
 				scope.launch {
 					when (downloadStatus) {
 						DownloadStatus.NOT_DOWNLOADED, DownloadStatus.FAILED -> {
+							// Remember the playlist so songs added later download by
+							// themselves.
+							if (collection is DomainPlaylist) {
+								downloadManager.setAutoDownloadPlaylist(collection.id, true)
+							}
 							downloadManager.downloadCollection(collection.songs.map { it.id })
 							snackBarManager.notify(R.string.notice_download_started)
 						}
@@ -132,6 +141,9 @@ fun CollectionDetailScreenHeadingRowButtons(
 						}
 
 						DownloadStatus.DOWNLOADED -> {
+							if (collection is DomainPlaylist) {
+								downloadManager.setAutoDownloadPlaylist(collection.id, false)
+							}
 							downloadDeletionHandler.requestDelete(
 								target = DeleteDownloadTarget.Collection.of(collection),
 								notifySnackBar = true
@@ -187,6 +199,21 @@ fun CollectionDetailScreenHeadingRowButtons(
 						modifier = Modifier.size(24.dp)
 					)
 				}
+			}
+		}
+
+		if (onSortClick != null) {
+			OutlinedButton(
+				modifier = Modifier.size(width = 52.dp, height = buttonHeight),
+				onClick = onSortClick,
+				shape = buttonShape,
+				contentPadding = PaddingValues(0.dp)
+			) {
+				Icon(
+					imageVector = Icons.Outlined.Sort,
+					contentDescription = sortLabel,
+					modifier = Modifier.size(24.dp)
+				)
 			}
 		}
 	}

@@ -63,7 +63,9 @@ fun CoverArt(
 		ImageRequest.Builder(coilPlatformContext)
 			.data(coverArtId?.let { sessionManager.getCoverArtUrl(it) })
 			.memoryCacheKey(coverArtId)
-			.diskCacheKey(coverArtId)
+			// Bumped so art that was cached while the server answered the app icon
+			// for missing artist/album images is fetched again.
+			.diskCacheKey("$coverArtId#2")
 			.diskCachePolicy(CachePolicy.ENABLED)
 			.memoryCachePolicy(CachePolicy.ENABLED)
 			.crossfade(crossfadeMs)

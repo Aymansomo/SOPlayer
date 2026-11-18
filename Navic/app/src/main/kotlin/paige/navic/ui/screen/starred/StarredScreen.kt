@@ -13,6 +13,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.map
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import org.koin.compose.koinInject
@@ -38,6 +40,7 @@ import paige.navic.domain.model.DomainSong
 import paige.navic.domain.model.DomainSongCollection
 import paige.navic.domain.model.DomainSongListType
 import paige.navic.domain.model.settings.BottomBarVisibilityMode
+import paige.navic.domain.repository.SongRepository
 import paige.navic.playback.MediaPlayer
 import paige.navic.ui.component.dialog.DeleteDownloadTarget
 import paige.navic.ui.component.dialog.QueueDuplicateDialog
@@ -71,6 +74,16 @@ fun StarredScreen() {
 	val downloadManager = koinInject<DownloadManager>()
 	val songsState by songsViewModel.uiState.collectAsStateWithLifecycle()
 	val songsLazyItems = songsState.data?.items?.collectAsLazyPagingItems()
+	// The whole starred list, not just the first page: the screen lists every
+	// liked song and plays that list in the order it is showing.
+	val songRepository = koinInject<SongRepository>()
+	val starredSongs by songRepository.getStarredSongs()
+		.map { songs ->
+			songs.sortedWith(
+				compareByDescending<DomainSong> { it.playCount }.thenBy { it.title.lowercase() }
+			)
+		}
+		.collectAsStateWithLifecycle(initialValue = emptyList())
 	val allDownloads by downloadManager.allDownloads.collectAsStateWithLifecycle(
 		initialValue = emptyList()
 	)
@@ -109,6 +122,11 @@ fun StarredScreen() {
 	val downloadDeletionHandler = rememberDownloadDeletionHandler()
 
 	val isReachable by songsViewModel.isReachable.collectAsStateWithLifecycle()
+
+	// Stars made on the PC since the last visit should already be here.
+	LaunchedEffect(Unit) {
+		songsViewModel.refreshSongs(true)
+	}
 
 	Scaffold(
 		topBar = { NestedTopBar({ Text(stringResource(R.string.title_starred)) }) },
@@ -150,12 +168,12 @@ fun StarredScreen() {
 				onSetShareId = { shareId = it },
 				isOnline = isReachable,
 
-				songs = songsLazyItems,
+				songs = starredSongs,
 				selectedSong = songsState.data?.selected,
 				allDownloads = allDownloads,
 				onPlaySong = { index ->
-					songsLazyItems?.itemSnapshotList?.items?.let {
-						player.playNow(it, index)
+					if (starredSongs.isNotEmpty()) {
+						player.playNow(starredSongs, index)
 					}
 				},
 				onSelectSong = {

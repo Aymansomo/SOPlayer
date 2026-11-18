@@ -4,8 +4,8 @@ const os = require('os');
 const path = require('path');
 const { execFile } = require('child_process');
 
-const NAME = 'Riff';
-const COMMENT = 'Riff - music player';
+const NAME = 'SOPlayer';
+const COMMENT = 'SOPlayer - music player';
 const APP_ID = 'io.github.rootscripts.riff';
 
 function winShortcutPath() {

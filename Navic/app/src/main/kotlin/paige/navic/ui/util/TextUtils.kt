@@ -132,23 +132,31 @@ fun buildSongInfoString(
 			appendBulletPoint()
 		}
 
-		if (showAlbum) {
-			append("${song.albumTitle}")
-			appendBulletPoint()
+		// Artist before album, so the name people look for leads the line. Servers
+		// that omit the OpenSubsonic artists list still get a name from artistName.
+		if (song.artists.isNotEmpty()) {
+			if (length > 0) appendBulletPoint()
+			appendArtists(
+				artists = song.artists,
+				onClick = onClickArtist
+			)
+		} else if (!song.artistName.isNullOrBlank()) {
+			if (length > 0) appendBulletPoint()
+			append(song.artistName)
+		}
+
+		if (showAlbum && !song.albumTitle.isNullOrBlank()) {
+			if (length > 0) appendBulletPoint()
+			append(song.albumTitle)
 		}
 
 		if (showYear && song.year != null) {
+			if (length > 0) appendBulletPoint()
 			append("${song.year}")
-			appendBulletPoint()
 		}
 
-		appendArtists(
-			artists = song.artists,
-			onClick = onClickArtist
-		)
-
 		if (showPlayCount && song.playCount > 0) {
-			appendBulletPoint()
+			if (length > 0) appendBulletPoint()
 			append(pluralStringResource(R.plurals.count_plays, song.playCount, song.playCount))
 		}
 	}

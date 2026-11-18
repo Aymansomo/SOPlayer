@@ -4,55 +4,326 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101014">
-<title>Riff remote</title>
+<title>SOPlayer remote</title>
 <style>
-  :root { color-scheme: dark; --bg:#101014; --card:#191922; --line:#2a2a38; --fg:#e8e6f0; --muted:#9b97ab; --accent:#7c6cff; }
-  * { box-sizing: border-box; }
+  :root { color-scheme: dark; --bg:#0d0d12; --card:#191922; --line:#2a2a38; --fg:#e8e6f0; --muted:#9b97ab; --accent:#b6a7ff; --accent-strong:#7c6cff; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(120% 80% at 50% 0%, #1d1b35 0%, var(--bg) 55%);
+    background: radial-gradient(120% 80% at 50% 0%, #211d3d 0%, var(--bg) 60%);
     color: var(--fg); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    padding: 24px;
+    padding: 20px; font-size: 15px;
   }
   main { width: 100%; max-width: 420px; }
-  .logo { font-size: 15px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); text-align: center; }
-  h1 { font-size: 28px; margin: 8px 0 4px; text-align: center; }
-  .sub { text-align: center; color: var(--muted); margin: 0 0 24px; font-size: 14px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; }
-  .row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
-  .row:last-child { border-bottom: 0; }
-  .row span:first-child { color: var(--muted); }
-  .ok { color: #4ade80; }
-  .off { color: #f87171; }
-  .note { margin-top: 18px; font-size: 13px; color: var(--muted); text-align: center; line-height: 1.5; }
+  .brand { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); text-align: center; }
+  h1 { font-size: 22px; margin: 6px 0 18px; text-align: center; font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: 18px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+  input[type="text"], input[type="password"] {
+    width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
+    background: #101018; color: var(--fg); font-size: 16px; margin-bottom: 14px;
+  }
+  input[type="text"]:focus, input[type="password"]:focus { outline: 2px solid var(--accent-strong); outline-offset: 1px; }
+  button { font: inherit; color: var(--fg); background: #232332; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; }
+  button:active { transform: scale(.97); }
+  .btn-primary { width: 100%; padding: 13px; background: var(--accent-strong); border-color: transparent; font-weight: 600; }
+  .error { color: #f87171; font-size: 13px; min-height: 18px; margin: 4px 0 10px; }
+  .art { width: 100%; aspect-ratio: 1 / 1; border-radius: 18px; background: #101018; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .art .ph { color: var(--muted); font-size: 44px; }
+  .meta { text-align: center; margin: 14px 0 4px; }
+  .title { font-size: 17px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .artist { font-size: 13px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 26px; background: transparent; margin: 0; }
+  input[type="range"]::-webkit-slider-runnable-track { height: 5px; border-radius: 999px; background: #2e2e3f; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; margin-top: -5px; border-radius: 50%; background: var(--accent); border: 0; }
+  input[type="range"]::-moz-range-track { height: 5px; border-radius: 999px; background: #2e2e3f; }
+  input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border: 0; border-radius: 50%; background: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 16px 0 6px; }
+  .controls button { width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .controls button.primary { width: 68px; height: 68px; background: var(--accent-strong); border-color: transparent; }
+  .controls button.liked { color: #ff6b8a; border-color: #ff6b8a55; }
+  .controls svg { width: 24px; height: 24px; fill: currentColor; }
+  .controls button.primary svg { width: 30px; height: 30px; }
+  .volume { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .volume button { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; }
+  .volume svg { width: 20px; height: 20px; fill: currentColor; }
+  .status { margin-top: 14px; font-size: 12px; color: var(--muted); text-align: center; min-height: 16px; }
+  .status.warn { color: #fbbf24; }
+  .logout { display: block; margin: 14px auto 0; padding: 7px 16px; font-size: 12px; color: var(--muted); background: transparent; }
+  .hidden { display: none !important; }
+  .note { margin-top: 16px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.5; }
 </style>
 </head>
 <body>
 <main>
-  <div class="logo">Riff</div>
-  <h1>Remote control</h1>
-  <p class="sub">This page will let you control the PC player from your phone.</p>
-  <div class="card">
-    <div class="row"><span>Server</span><strong>Riff</strong></div>
-    <div class="row"><span>Status</span><strong id="status">checking…</strong></div>
-    <div class="row"><span>Version</span><strong id="version">—</strong></div>
-  </div>
-  <p class="note">Setup is not finished yet — remote playback controls arrive in a later step of the build.</p>
+  <div class="brand">SOPlayer</div>
+
+  <section id="login">
+    <h1>Remote control</h1>
+    <div class="card">
+      <form id="login-form" novalidate>
+        <label for="username">Username</label>
+        <input id="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password">
+        <div class="error" id="login-error"></div>
+        <button type="submit" class="btn-primary" id="login-btn">Connect</button>
+      </form>
+    </div>
+    <p class="note">Use the username and password shown in SOPlayer → Settings → Phone &amp; Navic.</p>
+  </section>
+
+  <section id="panel" class="hidden">
+    <h1>Now playing</h1>
+    <div class="card">
+      <div class="art" id="art"><span class="ph">♪</span></div>
+      <div class="meta">
+        <div class="title" id="title">Nothing playing</div>
+        <div class="artist" id="artist">—</div>
+      </div>
+
+      <div class="bar">
+        <span id="pos">0:00</span>
+        <input type="range" id="seek" min="0" max="1" step="1" value="0" aria-label="Seek">
+        <span id="dur">0:00</span>
+      </div>
+
+      <div class="controls">
+        <button type="button" id="prev" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM9.5 12l8.5 6V6z"/></svg></button>
+        <button type="button" class="primary" id="playpause" aria-label="Play or pause"><svg viewBox="0 0 24 24" id="play-icon"><path d="M8 5v14l11-7z"/></svg></button>
+        <button type="button" id="next" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 6l8.5 6L6 18z"/></svg></button>
+      </div>
+
+      <div class="controls" style="margin-top:2px;">
+        <button type="button" id="like" aria-label="Like"><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.3-9.1C1.4 8.3 3.2 5 6.5 5c2 0 3.3 1.1 4 2.1C11.2 6.1 12.5 5 14.5 5c3.3 0 5.1 3.3 3.8 6.9C16.5 16.4 12 21 12 21z"/></svg></button>
+      </div>
+
+      <div class="volume">
+        <button type="button" id="mute" aria-label="Mute"><svg viewBox="0 0 24 24" id="vol-icon"><path d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg></button>
+        <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8" aria-label="Volume">
+      </div>
+
+      <div class="status" id="status"></div>
+      <button type="button" class="logout" id="logout">Disconnect</button>
+    </div>
+  </section>
 </main>
+
 <script>
-  fetch('/mobile/api/status', { cache: 'no-store' })
-    .then((r) => r.json())
-    .then((data) => {
-      const status = document.getElementById('status');
-      status.textContent = data.running ? 'online' : 'offline';
-      status.className = data.running ? 'ok' : 'off';
-      document.getElementById('version').textContent = data.version || '—';
-    })
-    .catch(() => {
-      const status = document.getElementById('status');
-      status.textContent = 'unreachable';
-      status.className = 'off';
+(function () {
+  'use strict';
+
+  var loginView = document.getElementById('login');
+  var panelView = document.getElementById('panel');
+  var loginForm = document.getElementById('login-form');
+  var loginError = document.getElementById('login-error');
+  var loginBtn = document.getElementById('login-btn');
+  var statusEl = document.getElementById('status');
+  var seekEl = document.getElementById('seek');
+  var volumeEl = document.getElementById('volume');
+  var titleEl = document.getElementById('title');
+  var artistEl = document.getElementById('artist');
+  var artEl = document.getElementById('art');
+  var posEl = document.getElementById('pos');
+  var durEl = document.getElementById('dur');
+  var playIcon = document.getElementById('play-icon');
+  var likeBtn = document.getElementById('like');
+  var muteBtn = document.getElementById('mute');
+
+  var draggingSeek = false;
+  var draggingVolume = false;
+  var volumeTimer = null;
+  var pollTimer = null;
+  var lastArt = '';
+  var PLAY_PATH = 'M8 5v14l11-7z';
+  var PAUSE_PATH = 'M7 5h4v14H7zM13 5h4v14h-4z';
+
+  function clock(seconds) {
+    var s = Math.max(0, Math.floor(Number(seconds) || 0));
+    var m = Math.floor(s / 60);
+    var rest = s % 60;
+    return m + ':' + (rest < 10 ? '0' : '') + rest;
+  }
+
+  function api(path, options) {
+    var opts = Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }, options || {});
+    return fetch('/remote/api/' + path, opts).then(function (res) {
+      return res.json().catch(function () { return { ok: false }; }).then(function (body) {
+        body.status = res.status;
+        return body;
+      });
     });
+  }
+
+  function showLogin(message) {
+    panelView.classList.add('hidden');
+    loginView.classList.remove('hidden');
+    if (message) loginError.textContent = message;
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  function showPanel() {
+    loginError.textContent = '';
+    loginView.classList.add('hidden');
+    panelView.classList.remove('hidden');
+    startPolling();
+  }
+
+  function setStatus(text, warn) {
+    statusEl.textContent = text || '';
+    statusEl.classList.toggle('warn', !!warn);
+  }
+
+  function render(data) {
+    var state = data && data.state;
+    var enabled = !data || data.remoteEnabled !== false;
+
+    if (!enabled) {
+      setStatus('Remote control is turned off in SOPlayer settings.', true);
+    } else if (!data || !data.canControl) {
+      setStatus(data && data.stale ? 'SOPlayer stopped reporting. Is it still running?' : 'Waiting for SOPlayer…', true);
+    } else {
+      setStatus('Connected to SOPlayer on the PC.');
+    }
+
+    if (!state) {
+      titleEl.textContent = 'Nothing playing';
+      artistEl.textContent = '—';
+      return;
+    }
+
+    titleEl.textContent = state.track ? (state.track.title || 'Nothing playing') : 'Nothing playing';
+    artistEl.textContent = state.track ? [state.track.artist, state.track.album].filter(Boolean).join(' · ') : '—';
+
+    var art = state.track && state.track.thumbnail ? state.track.thumbnail : '';
+    if (art !== lastArt) {
+      lastArt = art;
+      artEl.innerHTML = '';
+      if (art) {
+        var img = document.createElement('img');
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        img.onerror = function () {
+          artEl.innerHTML = '<span class="ph">♪</span>';
+        };
+        img.src = art;
+        artEl.appendChild(img);
+      } else {
+        artEl.innerHTML = '<span class="ph">♪</span>';
+      }
+    }
+
+    var duration = Number(state.duration) || 0;
+    var position = Number(state.position) || 0;
+    if (!draggingSeek) {
+      seekEl.max = String(Math.max(1, Math.round(duration)));
+      seekEl.value = String(Math.min(Math.max(0, Math.round(position)), Number(seekEl.max)));
+      posEl.textContent = clock(position);
+    }
+    durEl.textContent = clock(duration);
+
+    playIcon.setAttribute('d', state.playing ? PAUSE_PATH : PLAY_PATH);
+    likeBtn.classList.toggle('liked', !!state.liked);
+    if (!draggingVolume) volumeEl.value = String(Number(state.volume) || 0);
+  }
+
+  function refresh() {
+    return api('state').then(function (data) {
+      if (data.status === 401 || data.needLogin) {
+        showLogin('');
+        return;
+      }
+      showPanel();
+      render(data);
+    }).catch(function () {
+      setStatus('Cannot reach SOPlayer. Is the PC awake?', true);
+    });
+  }
+
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(refresh, 1500);
+  }
+
+  function command(action, value) {
+    var payload = { action: action };
+    if (value !== undefined) payload.value = value;
+    return api('command', { method: 'POST', body: JSON.stringify(payload) })
+      .then(function (data) {
+        if (data.status === 401) { showLogin('Session expired, connect again.'); return; }
+        if (data.ok) render(data);
+        else if (data.error) setStatus(data.error, true);
+      })
+      .catch(function () { setStatus('Command failed. Is SOPlayer running?', true); });
+  }
+
+  loginForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+    loginBtn.disabled = true;
+    loginError.textContent = '';
+    api('login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: document.getElementById('username').value.trim(),
+        password: document.getElementById('password').value
+      })
+    }).then(function (data) {
+      loginBtn.disabled = false;
+      if (!data.ok) {
+        loginError.textContent = data.error || 'Could not connect';
+        return;
+      }
+      document.getElementById('password').value = '';
+      showPanel();
+      refresh();
+    }).catch(function () {
+      loginBtn.disabled = false;
+      loginError.textContent = 'Could not reach SOPlayer.';
+    });
+  });
+
+  document.getElementById('playpause').addEventListener('click', function () { command('playpause'); });
+  document.getElementById('next').addEventListener('click', function () { command('next'); });
+  document.getElementById('prev').addEventListener('click', function () { command('prev'); });
+  likeBtn.addEventListener('click', function () {
+    command(likeBtn.classList.contains('liked') ? 'unlike' : 'like');
+  });
+  muteBtn.addEventListener('click', function () { command('mute'); });
+
+  seekEl.addEventListener('input', function () {
+    draggingSeek = true;
+    posEl.textContent = clock(seekEl.value);
+  });
+  seekEl.addEventListener('change', function () {
+    draggingSeek = false;
+    command('seek', Number(seekEl.value));
+  });
+
+  volumeEl.addEventListener('input', function () {
+    draggingVolume = true;
+    if (volumeTimer) clearTimeout(volumeTimer);
+    volumeTimer = setTimeout(function () {
+      volumeTimer = null;
+      draggingVolume = false;
+      command('volume', Number(volumeEl.value));
+    }, 180);
+  });
+  volumeEl.addEventListener('change', function () {
+    draggingVolume = false;
+    if (volumeTimer) { clearTimeout(volumeTimer); volumeTimer = null; }
+    command('volume', Number(volumeEl.value));
+  });
+
+  document.getElementById('logout').addEventListener('click', function () {
+    api('logout', { method: 'POST', body: '{}' }).catch(function () {}).then(function () {
+      showLogin('');
+    });
+  });
+
+  refresh();
+})();
 </script>
 </body>
 </html>

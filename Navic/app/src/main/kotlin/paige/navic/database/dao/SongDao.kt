@@ -18,12 +18,21 @@ import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 import paige.navic.database.entity.SongEntity
 import paige.navic.util.Logger
+import kotlin.time.Duration
 import kotlin.time.Instant
 
 @Dao
 interface SongDao {
 	@RawQuery
 	fun getPagedSongsByQuery(query: RoomRawQuery): PagingSource<Int, SongEntity>
+
+	@Query("""
+		SELECT s.songId FROM SongEntity s
+		INNER JOIN PlaylistSongCrossRef ps ON s.songId = ps.songId
+		WHERE ps.playlistId = :playlistId
+		ORDER BY ps.position ASC
+	""")
+	suspend fun getSongIdsByPlaylistId(playlistId: String): List<String>
 
 	@Query("""
 		SELECT s.* FROM SongEntity s
@@ -35,6 +44,9 @@ interface SongDao {
 
 	@RawQuery
 	suspend fun getSongIdsByQuery(query: RoomRawQuery): List<String>
+
+	@RawQuery
+	suspend fun getSongsByQuery(query: RoomRawQuery): List<SongEntity>
 
 	@Query("SELECT * FROM SongEntity WHERE songId = :songId LIMIT 1")
 	suspend fun getSongById(songId: String): SongEntity?
@@ -93,6 +105,25 @@ interface SongDao {
 
 	@Query("UPDATE SongEntity SET userRating = :userRating WHERE songId = :songId")
 	suspend fun updateSongRating(songId: String, userRating: Int?)
+
+	/**
+	 * Refresh the displayed fields of a row that already exists, without touching
+	 * play counts, ratings or stars. Search results used to be inserted with
+	 * IGNORE, so a song kept the title/artist it was first synced with.
+	 */
+	@Query(
+		"UPDATE SongEntity SET title = :title, artistName = :artistName, " +
+			"albumTitle = :albumTitle, coverArtId = :coverArtId, duration = :duration " +
+			"WHERE songId = :songId"
+	)
+	suspend fun updateSongMetadata(
+		songId: String,
+		title: String,
+		artistName: String?,
+		albumTitle: String?,
+		coverArtId: String?,
+		duration: Duration
+	)
 
 	@Query("DELETE FROM SongEntity")
 	suspend fun clearAllSongs()

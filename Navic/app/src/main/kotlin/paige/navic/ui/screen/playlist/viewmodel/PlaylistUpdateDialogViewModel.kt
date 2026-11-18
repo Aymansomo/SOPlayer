@@ -9,6 +9,7 @@ package paige.navic.ui.screen.playlist.viewmodel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import paige.navic.R
+import paige.navic.domain.manager.session.DownloadManager
 import paige.navic.domain.manager.session.SessionManager
 import paige.navic.domain.manager.ui.SnackBarManager
 import paige.navic.ui.core.UiState
@@ -24,7 +25,8 @@ class PlaylistUpdateDialogViewModel(
 	private val songIds: List<String>,
 	private val playlistToExclude: String?,
 	private val sessionManager: SessionManager,
-	private val snackBarManager: SnackBarManager
+	private val snackBarManager: SnackBarManager,
+	private val downloadManager: DownloadManager
 ) : AsyncViewModel<PlaylistUpdateViewState>(UiState.Loading(PlaylistUpdateViewState())) {
 	private val _events = Channel<Event>()
 	val events = _events.receiveAsFlow()
@@ -36,6 +38,9 @@ class PlaylistUpdateDialogViewModel(
 	fun refreshResults() = execute {
 		PlaylistUpdateViewState(
 			playlists = sessionManager.api.getPlaylists()
+				// Generated playlists (For you, Daily Mix, Trending now) are built by
+				// the server for browsing only; songs cannot be added to them.
+				.filter { !it.id.startsWith("smart_") }
 				.filter { it.id != playlistToExclude }
 		)
 	}
@@ -60,6 +65,8 @@ class PlaylistUpdateDialogViewModel(
 					playlist.id,
 					songIdsToAdd = songIds
 				)
+				// Downloaded playlists pick the new songs up immediately.
+				downloadManager.syncAutoDownload(playlist.id)
 			}
 			if (selected.size == 1) {
 				snackBarManager.notify(

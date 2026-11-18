@@ -17,13 +17,14 @@ data class NavbarConfig(
 ) {
 	companion object {
 		const val KEY = "navbarConfig"
-		const val VERSION = 8
+		const val VERSION = 9
 		val default = NavbarConfig(
 			tabs = listOf(
 				NavbarTab(NavbarTab.Id.LIBRARY, true),
 				NavbarTab(NavbarTab.Id.ALBUMS, true),
 				NavbarTab(NavbarTab.Id.PLAYLISTS, true),
 				NavbarTab(NavbarTab.Id.ARTISTS, true),
+				NavbarTab(NavbarTab.Id.REMOTE, true),
 				NavbarTab(NavbarTab.Id.SEARCH, false),
 				NavbarTab(NavbarTab.Id.GENRES, false),
 				NavbarTab(NavbarTab.Id.SONGS, false),

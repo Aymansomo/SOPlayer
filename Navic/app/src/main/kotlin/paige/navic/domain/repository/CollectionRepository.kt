@@ -17,9 +17,12 @@ import paige.navic.database.dao.PlaylistDao
 import paige.navic.database.dao.SongDao
 import paige.navic.database.mapper.toDomainModel
 import paige.navic.database.mapper.toEntity
+import paige.navic.database.query.toSongQuery
 import paige.navic.domain.manager.session.SessionManager
 import paige.navic.domain.model.DomainAlbum
+import paige.navic.domain.model.DomainFilter
 import paige.navic.domain.model.DomainPlaylist
+import paige.navic.domain.model.DomainPlaylistSongSort
 import paige.navic.domain.model.DomainSong
 import paige.navic.domain.model.DomainSongCollection
 import dev.zt64.subsonic.api.model.AlbumInfo as ApiAlbumInfo
@@ -87,14 +90,33 @@ class CollectionRepository(
 		)
 	}
 
-	fun getPagedPlaylistSongs(playlistId: String): Flow<PagingData<DomainSong>> {
+	/**
+	 * The whole playlist in the order the detail screen is showing it, so pressing
+	 * a row starts that song and the queue follows the sort the user picked
+	 * instead of the server's original playlist order.
+	 */
+	suspend fun getPlaylistSongs(
+		playlistId: String,
+		sort: DomainPlaylistSongSort = DomainPlaylistSongSort.PlaylistOrder,
+		reversed: Boolean = false,
+		filters: Set<DomainFilter> = emptySet()
+	): List<DomainSong> = songDao
+		.getSongsByQuery(sort.toSongQuery(playlistId, reversed, filters))
+		.map { it.toDomainModel() }
+
+	fun getPagedPlaylistSongs(
+		playlistId: String,
+		sort: DomainPlaylistSongSort = DomainPlaylistSongSort.PlaylistOrder,
+		reversed: Boolean = false,
+		filters: Set<DomainFilter> = emptySet()
+	): Flow<PagingData<DomainSong>> {
 		return Pager(
 			config = PagingConfig(
 				pageSize = 20,
 				prefetchDistance = 10
 			),
 			pagingSourceFactory = {
-				songDao.getPagedSongsByPlaylistId(playlistId)
+				songDao.getPagedSongsByQuery(sort.toSongQuery(playlistId, reversed, filters))
 			}
 		).flow.map { pagingData -> pagingData.map { it.toDomainModel() } }
 	}

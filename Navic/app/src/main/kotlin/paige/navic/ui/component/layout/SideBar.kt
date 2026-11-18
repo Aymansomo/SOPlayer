@@ -77,6 +77,7 @@ fun SideBar() {
 			NavbarTab.Id.SONGS -> NavigationTab.SONGS
 			NavbarTab.Id.RADIOS -> NavigationTab.RADIOS
 			NavbarTab.Id.STATISTICS -> NavigationTab.STATISTICS
+			NavbarTab.Id.REMOTE -> NavigationTab.REMOTE
 		}
 	}
 

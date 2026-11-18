@@ -79,7 +79,10 @@ fun PlaylistListScreen(
 	val preferenceManager = koinInject<PreferenceManager>()
 	val selectedViewMode = preferenceManager.playlistListViewMode
 
+	// A separate instance from the home screen's: this list is the user's own
+	// playlists, so the server-generated smart mixes are hidden here.
 	val viewModel = koinViewModel<PlaylistListViewModel>(
+		key = "playlistsTab",
 		viewModelStoreOwner = if (nested) {
 			LocalViewModelStoreOwner.current!!
 		} else {
@@ -102,6 +105,10 @@ fun PlaylistListScreen(
 	var createDialogShown by rememberSaveable { mutableStateOf(false) }
 
 	val gridState = rememberLazyGridState()
+
+	LaunchedEffect(Unit) {
+		viewModel.refreshPlaylists(false, hideSmart = true)
+	}
 
 	val actions: @Composable RowScope.() -> Unit = {
 		PlaylistListScreenSortButton(
@@ -178,7 +185,7 @@ fun PlaylistListScreen(
                 .padding(top = innerPadding.calculateTopPadding())
                 .background(MaterialTheme.colorScheme.surface),
 			finished = !isLoading,
-			onRefresh = { viewModel.refreshPlaylists(true) },
+			onRefresh = { viewModel.refreshPlaylists(true, hideSmart = true) },
 			key = state
 		) {
 			ArtGrid(
@@ -285,13 +292,13 @@ fun PlaylistListScreen(
 	DeletionDialog(
 		target = deletionId?.let { DeletionTarget.Playlist(it) },
 		onDismissRequest = { deletionId = null },
-		onRefresh = { viewModel.refreshPlaylists(true) }
+		onRefresh = { viewModel.refreshPlaylists(true, hideSmart = true) }
 	)
 
 	if (createDialogShown) {
 		PlaylistCreateDialog(
-			onDismissRequest = { createDialogShown = false },
-			onRefresh = { viewModel.refreshPlaylists(true) }
-		)
+							onDismissRequest = { createDialogShown = false },
+				onRefresh = { viewModel.refreshPlaylists(true, hideSmart = true) }
+			)
 	}
 }

@@ -13,10 +13,17 @@ import paige.navic.domain.model.DomainPlaylistListType
 fun DomainPlaylistListType.toSqlQuery(
 	reversed: Boolean = false,
 	filters: Set<DomainFilter> = emptySet(),
-	idsOnly: Boolean = false
+	idsOnly: Boolean = false,
+	hideSmart: Boolean = false
 ): RoomRawQuery {
 	val whereClauses = mutableListOf<String>()
 	val args = mutableListOf<Any>()
+
+	// The server-generated mixes ("smart_*") are read-only and belong on the
+	// home screen, not in the user's playlist library.
+	if (hideSmart) {
+		whereClauses.add("playlistId NOT LIKE 'smart%'")
+	}
 
 	if (filters.contains(DomainFilter.Downloaded)) {
 		whereClauses.add(

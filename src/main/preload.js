@@ -132,6 +132,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeMobileFolder: (folder) => ipcRenderer.invoke('mobile-remove-folder', folder),
   testMobileConnection: () => ipcRenderer.invoke('mobile-test-connection'),
   scanMobileLibrary: () => ipcRenderer.invoke('mobile-scan-library'),
+  syncMobileCollection: (payload) => ipcRenderer.invoke('mobile-sync-collection', payload),
+  reportMobileRemoteState: (snapshot) => ipcRenderer.invoke('mobile-report-remote-state', snapshot).catch(() => {}),
+  resolveMobileTracks: (ids, startIndex = 0) =>
+    ipcRenderer.invoke('mobile-resolve-tracks', ids, startIndex),
   onMobileCommand: (cb) => ipcRenderer.on('mobile-command', (e, data) => cb(data)),
   onMobileStatus: (cb) => ipcRenderer.on('mobile-status', (e, data) => cb(data)),
 });

@@ -10,6 +10,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import paige.navic.domain.manager.runtime.PreferenceManager
+import paige.navic.domain.manager.session.DownloadManager
 import paige.navic.domain.manager.session.SessionManager
 import paige.navic.domain.manager.session.SessionState
 import paige.navic.domain.repository.DbRepository
@@ -22,7 +23,8 @@ class SyncCoordinator(
 	private val repository: DbRepository,
 	private val actionProcessor: SyncActionProcessor,
 	private val preferenceManager: PreferenceManager,
-	private val sessionManager: SessionManager
+	private val sessionManager: SessionManager,
+	private val downloadManager: DownloadManager
 ) {
 	private val mutex = Mutex()
 	private val fullSyncThreshold = 1.hours
@@ -55,6 +57,8 @@ class SyncCoordinator(
 		result.onSuccess {
 			preferenceManager.lastFullSyncTime = Clock.System.now().toEpochMilliseconds()
 			Logger.i("SyncCoordinator", "Full library sync complete.")
+			// Pull songs that were added to an already-downloaded playlist.
+			downloadManager.syncAllAutoDownloads()
 		}.onFailure {
 			if (it is CancellationException) throw it
 			Logger.e("SyncCoordinator", "couldn't sync library", it)

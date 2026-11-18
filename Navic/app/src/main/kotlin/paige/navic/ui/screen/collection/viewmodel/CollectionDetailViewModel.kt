@@ -13,6 +13,8 @@ import androidx.paging.cachedIn
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -21,15 +23,20 @@ import paige.navic.R
 import paige.navic.database.mapper.toDomainModel
 import paige.navic.domain.manager.session.connectivity.ReachabilityFlow
 import paige.navic.domain.manager.session.SessionManager
+import paige.navic.domain.manager.session.DownloadManager
 import paige.navic.domain.manager.session.SessionState
 import paige.navic.domain.manager.ui.SnackBarManager
 import paige.navic.domain.model.DomainAlbum
 import paige.navic.domain.model.DomainAlbumInfo
+import paige.navic.domain.model.DomainFilter
+import paige.navic.domain.model.DomainPlaylist
+import paige.navic.domain.model.DomainPlaylistSongSort
 import paige.navic.domain.model.DomainSong
 import paige.navic.domain.model.DomainSongCollection
 import paige.navic.domain.repository.AlbumRepository
 import paige.navic.domain.repository.CollectionRepository
 import paige.navic.domain.repository.SongRepository
+import paige.navic.playback.MediaPlayer
 import paige.navic.ui.viewmodel.AsyncViewModel
 
 data class CollectionViewState(
@@ -50,6 +57,7 @@ class CollectionDetailViewModel(
 	private val albumRepository: AlbumRepository,
 	private val sessionManager: SessionManager,
 	private val snackBarManager: SnackBarManager,
+	private val downloadManager: DownloadManager,
 	reachability: ReachabilityFlow
 ) : AsyncViewModel<CollectionViewState>() {
 
@@ -65,9 +73,64 @@ class CollectionDetailViewModel(
 
 	val isReachable = reachability.isReachable
 
-	val pagedSongs: Flow<PagingData<DomainSong>> = repository
-		.getPagedPlaylistSongs(collectionId)
+	val sort = MutableStateFlow(DomainPlaylistSongSort.PlaylistOrder)
+	val reversed = MutableStateFlow(false)
+	val filters = MutableStateFlow<Set<DomainFilter>>(emptySet())
+
+	val pagedSongs: Flow<PagingData<DomainSong>> = combine(sort, reversed, filters) {
+		sorting, isReversed, activeFilters -> Triple(sorting, isReversed, activeFilters)
+	}
+		.flatMapLatest { (sorting, isReversed, activeFilters) ->
+			repository.getPagedPlaylistSongs(collectionId, sorting, isReversed, activeFilters)
+		}
 		.cachedIn(viewModelScope)
+
+	fun setSorting(sorting: DomainPlaylistSongSort) {
+		sort.value = sorting
+	}
+
+	/**
+	 * Start [startSong] from the list the user is looking at. The queue is loaded
+	 * with the same sort and filters the screen uses, otherwise a song pressed
+	 * under "newest first" played whatever sat at that index in the server's
+	 * original playlist order.
+	 */
+	fun playFrom(player: MediaPlayer, startSong: DomainSong) = launch {
+		val songs = when (val collection = data?.collection) {
+			is DomainPlaylist -> repository.getPlaylistSongs(
+				playlistId = collection.id,
+				sort = sort.value,
+				reversed = reversed.value,
+				filters = filters.value
+			)
+
+			is DomainAlbum -> collection.songs.sortedWith(
+				compareBy({ it.discNumber }, { it.trackNumber })
+			)
+
+			else -> emptyList()
+		}
+		if (songs.isEmpty()) {
+			player.playNow(startSong)
+			return@launch
+		}
+		player.playNow(
+			songs = songs,
+			startIndex = songs.indexOfFirst { it.id == startSong.id }.coerceAtLeast(0)
+		)
+	}
+
+	fun setReversed(value: Boolean) {
+		reversed.value = value
+	}
+
+	fun toggleFilter(filter: DomainFilter) {
+		filters.value = if (filter in filters.value) {
+			filters.value - filter
+		} else {
+			filters.value + filter
+		}
+	}
 
 	val otherAlbums = uiState
 		.map { state -> (state.data?.collection as? DomainAlbum) }
@@ -99,6 +162,9 @@ class CollectionDetailViewModel(
 			CollectionViewState(collection = collection)
 		}
 		setSuccess(state)
+		// A playlist the user downloaded keeps downloading songs that were just
+		// added to it, without pressing the download button again.
+		if (collection is DomainPlaylist) downloadManager.syncAutoDownload(collectionId)
 	}
 
 	fun selectSong(song: DomainSong, index: Int) = updateData {

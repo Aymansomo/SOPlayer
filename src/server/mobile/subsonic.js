@@ -10,9 +10,15 @@
 
 const fs = require('fs');
 const path = require('path');
+const { Readable } = require('stream');
 
 const config = require('./config');
 const library = require('./library');
+const online = require('./online');
+const collection = require('./collection');
+const transcode = require('./transcode');
+const playlistCover = require('./playlist-cover');
+const lyrics = require('./lyrics');
 const { checkRequestAuth } = require('./auth');
 
 const API_VERSION = '1.16.1';
@@ -50,7 +56,7 @@ function okResponse(payload) {
   return Object.assign({
     status: 'ok',
     version: API_VERSION,
-    type: 'Riff',
+    type: 'SOPlayer',
     serverVersion: SERVER_VERSION,
     openSubsonic: true,
   }, payload || {});
@@ -60,7 +66,7 @@ function errorResponse(code, message) {
   return {
     status: 'failed',
     version: API_VERSION,
-    type: 'Riff',
+    type: 'SOPlayer',
     serverVersion: SERVER_VERSION,
     openSubsonic: true,
     error: { code, message },
@@ -188,6 +194,7 @@ function indexLetter(name) {
 
 function subsonicSong(song) {
   if (!song) return null;
+  const plays = collection.playCount(song);
   return {
     id: song.id,
     parent: song.albumId,
@@ -212,6 +219,9 @@ function subsonicSong(song) {
     type: 'music',
     isVideo: false,
     created: library.isoDate(song.createdMs) || undefined,
+    // Subsonic expects a timestamp here; `true` breaks client date parsing.
+    starred: collection.starredAt(song) || undefined,
+    playCount: plays > 0 ? plays : undefined,
   };
 }
 
@@ -276,6 +286,53 @@ function searchResultPayload(key, result) {
   };
 }
 
+function playlistPayload(pl) {
+  const summary = collection.playlistSummary(pl);
+  return {
+    playlist: {
+      id: summary.id,
+      name: summary.name,
+      owner: currentUsername(),
+      public: false,
+      songCount: summary.songCount,
+      duration: Math.round(summary.duration),
+      created: summary.created,
+      changed: summary.changed,
+      // A 2×2 mosaic of the first four songs, generated on demand.
+      coverArt: playlistCover.coverIdFor(summary.id),
+      entry: summary.entry.map(subsonicSong),
+    },
+  };
+}
+
+function playlistSummaryPayload(pl) {
+  const summary = collection.playlistSummary(pl);
+  return {
+    id: summary.id,
+    name: summary.name,
+    owner: currentUsername(),
+    public: false,
+    songCount: summary.songCount,
+    duration: Math.round(summary.duration),
+    created: summary.created,
+    changed: summary.changed,
+    coverArt: playlistCover.coverIdFor(summary.id),
+  };
+}
+
+function albumInfoPayload(album) {
+  const details = [album.artist, album.year ? String(album.year) : '', album.genre]
+    .filter(Boolean);
+  return {
+    notes: details.length ? `${album.name}\n${details.join(' · ')}` : String(album.name || ''),
+    musicBrainzId: '',
+    lastFmUrl: '',
+    smallImageUrl: '',
+    mediumImageUrl: '',
+    largeImageUrl: '',
+  };
+}
+
 function scanStatusPayload() {
   const status = library.getScanStatus();
   return {
@@ -285,6 +342,75 @@ function scanStatusPayload() {
       folderCount: status.folderCount,
       lastScan: status.lastScan || undefined,
     },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Search (local library + online songs)
+// ---------------------------------------------------------------------------
+
+const SEARCH_MAX = 500;
+
+function clampedCount(value, fallback) {
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.min(n, SEARCH_MAX);
+}
+
+function pageOf(items, offset, count) {
+  return { total: items.length, items: items.slice(offset, offset + count) };
+}
+
+/**
+ * Local search plus online (YouTube / SoundCloud) matches, paged together.
+ * Online matches are appended after local ones, so a local song with the same
+ * name still comes first, and only for real queries short enough for yt-dlp.
+ */
+async function mergedSearch(params) {
+  const query = params.get('query') || '';
+  const result = library.search(query, {
+    artistCount: SEARCH_MAX,
+    artistOffset: 0,
+    albumCount: SEARCH_MAX,
+    albumOffset: 0,
+    songCount: SEARCH_MAX,
+    songOffset: 0,
+  });
+
+  let artists = result.artists.items;
+  let albums = result.albums.items;
+  let songs = result.songs.items;
+
+  if (query.trim().length >= 2 && online.isEnabled()) {
+    const extraSongs = await online.searchSongs(query, { limit: 25 }).catch(() => []);
+    if (extraSongs.length) {
+      const seen = new Set(songs.map((song) => song.id));
+      songs = songs.concat(extraSongs.filter((song) => !seen.has(song.id)));
+    }
+    const extraAlbums = online.searchAlbums(query)
+      .filter((album) => !albums.some((existing) => existing.id === album.id));
+    if (extraAlbums.length) albums = albums.concat(extraAlbums);
+    const extraArtists = online.searchArtists(query)
+      .filter((artist) => !artists.some((existing) => existing.id === artist.id));
+    if (extraArtists.length) artists = artists.concat(extraArtists);
+  }
+
+  return {
+    artists: pageOf(
+      artists,
+      clampedCount(params.get('artistOffset'), 0),
+      clampedCount(params.get('artistCount'), 20)
+    ),
+    albums: pageOf(
+      albums,
+      clampedCount(params.get('albumOffset'), 0),
+      clampedCount(params.get('albumCount'), 20)
+    ),
+    songs: pageOf(
+      songs,
+      clampedCount(params.get('songOffset'), 0),
+      clampedCount(params.get('songCount'), 20)
+    ),
   };
 }
 
@@ -307,7 +433,13 @@ function requestPathParam(params, ...names) {
 
 async function handleCoverArt(req, res, params) {
   const id = requestPathParam(params, 'id', 'c');
-  const art = await library.ensureCoverArt(id);
+  // Playlists get a composed mosaic, online songs their own thumbnail, and
+  // anything else goes through the local library (embedded art, cover.jpg).
+  const art = (playlistCover.isPlaylistCoverId(id)
+    ? await playlistCover.ensureCover(id).catch(() => null)
+    : null) ||
+    (await online.ensureCoverArt(id)) ||
+    (await library.ensureCoverArt(id));
   if (!art) return sendEmpty(res, 404);
 
   const etag = `"cover-${id}-${art.size}"`;
@@ -342,8 +474,17 @@ async function handleCoverArt(req, res, params) {
   stream.pipe(res);
 }
 
+/**
+ * Parse a single `bytes=` range.
+ *
+ * Returns `null` when the header should be ignored (malformed or multi-range:
+ * serving the whole file is the friendly behaviour), and
+ * `{ unsatisfiable: true }` when the range cannot be satisfied (416).
+ */
 function parseRange(rangeHeader, total) {
-  const match = /^bytes=(\d*)-(\d*)$/.exec(String(rangeHeader || '').trim());
+  const header = String(rangeHeader || '').trim();
+  if (!header) return null;
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header);
   if (!match) return null;
   const [, rawStart, rawEnd] = match;
   if (!rawStart && !rawEnd) return null;
@@ -361,7 +502,11 @@ function parseRange(rangeHeader, total) {
   }
 
   if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
-  if (start < 0 || end < start || start >= total) return null;
+  if (start < 0) return null;
+  // Out of bounds: 416 needs the total length, so report it before treating the
+  // header as malformed.
+  if (start >= total) return { unsatisfiable: true };
+  if (end < start) return null;
   return { start, end: Math.min(end, total - 1) };
 }
 
@@ -370,12 +515,76 @@ function contentDisposition(type, name) {
   return `${type}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(String(name || 'song'))}`;
 }
 
-function handleStream(req, res, params, asDownload) {
+function streamFilename(song, ext) {
+  const base = `${(song && song.artist) || 'Unknown'} - ${(song && song.title) || 'song'}`
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120) || 'song';
+  return `${base}.${ext}`;
+}
+
+function sendTranscodeHead(res, song) {
+  if (res.headersSent) return;
+  res.writeHead(200, {
+    'Content-Type': 'audio/mpeg',
+    'Accept-Ranges': 'none',
+    'Cache-Control': 'no-store',
+    'Content-Disposition': contentDisposition('inline', streamFilename(song, 'mp3')),
+    'Access-Control-Allow-Origin': '*',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  res.end();
+}
+
+async function handleStream(req, res, params, asDownload) {
   const id = requestPathParam(params, 'id');
   const info = library.streamInfo(id);
+  const song = info ? info.song : online.getSong(id);
+
+  // ---- Online songs (Phase 4) ----
   if (!info) {
+    if (!song) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('Song not found');
+    }
+
+    // `download` is always the untouched original; `stream` may transcode.
+    const plan = asDownload ? { transcode: false } : transcode.plan(song, params);
+    if (plan.transcode) {
+      if (req.method === 'HEAD') return sendTranscodeHead(res, song);
+      const opened = await online.openStream(id, { full: true }).catch(() => null);
+      const body = opened && opened.response && opened.response.body;
+      // Ranged chunks first: a single CDN connection is throttled badly.
+      const readable = online.rangedBody(opened) || (body ? Readable.fromWeb(body) : null);
+      if (readable) {
+        const started = transcode.toMp3(res, { readable }, {
+          bitRate: plan.bitRate,
+          timeOffset: plan.timeOffset,
+          name: streamFilename(song, 'mp3'),
+        });
+        if (started) return;
+      }
+      // ffmpeg could not start: relay the original stream instead.
+    }
+
+    const handled = await online.streamTrack(id, req, res, { download: asDownload });
+    if (handled) return;
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end('Song not found');
+  }
+
+  // ---- Local files (Phase 2 transcode support) ----
+  const plan = asDownload ? { transcode: false } : transcode.plan(info.song, params);
+  if (plan.transcode) {
+    if (req.method === 'HEAD') return sendTranscodeHead(res, info.song);
+    const started = transcode.toMp3(res, { path: info.path }, {
+      bitRate: plan.bitRate,
+      timeOffset: plan.timeOffset,
+      name: streamFilename(info.song, 'mp3'),
+    });
+    if (started) return;
+    // ffmpeg could not start: fall back to the original bytes.
   }
 
   const total = info.size;
@@ -386,19 +595,22 @@ function handleStream(req, res, params, asDownload) {
 
   if (rangeHeader) {
     const range = parseRange(rangeHeader, total);
-    if (!range) {
+    if (range && range.unsatisfiable) {
       res.writeHead(416, {
         'Content-Type': 'text/plain; charset=utf-8',
         'Content-Range': `bytes */${total}`,
       });
       return res.end();
     }
-    start = range.start;
-    end = range.end;
-    status = 206;
+    // A malformed header is ignored: serve the whole file.
+    if (range) {
+      start = range.start;
+      end = range.end;
+      status = 206;
+    }
   }
 
-  const length = end - start + 1;
+  const length = Math.max(0, end - start + 1);
   const headers = {
     'Content-Type': info.mime,
     'Content-Length': length,
@@ -490,7 +702,28 @@ const routes = {
     };
   },
 
+  // Navic asks for this whenever an album page opens (the ID3 variant), so a
+  // missing endpoint surfaced as a GENERIC error over the album title. There is
+  // no Last.fm data here, but the album's own details are a useful description.
+  getalbuminfo(params) {
+    const id = requestPathParam(params, 'id');
+    const album = library.getAlbum(id) || online.getAlbum(id);
+    if (!album) throw new SubsonicError(ERRORS.NOT_FOUND, 'Album not found');
+    return { albumInfo: albumInfoPayload(album) };
+  },
+
+  getalbuminfo2(params) {
+    return routes.getalbuminfo(params);
+  },
+
   getalbumlist2(params) {
+    const type = String(params.get('type') || '').toLowerCase();
+    if (type === 'starred') {
+      return { albumList2: { album: collection.starredAlbumList().map(subsonicAlbum) } };
+    }
+    if (type === 'frequent') {
+      return { albumList2: { album: collection.frequentAlbums(params.get('size')).map(subsonicAlbum) } };
+    }
     const albums = library.listAlbums(params.get('type'), {
       size: params.get('size'),
       offset: params.get('offset'),
@@ -499,6 +732,13 @@ const routes = {
   },
 
   getalbumlist(params) {
+    const type = String(params.get('type') || '').toLowerCase();
+    if (type === 'starred') {
+      return { albumList: { album: collection.starredAlbumList().map(subsonicAlbum) } };
+    }
+    if (type === 'frequent') {
+      return { albumList: { album: collection.frequentAlbums(params.get('size')).map(subsonicAlbum) } };
+    }
     const albums = library.listAlbums(params.get('type'), {
       size: params.get('size'),
       offset: params.get('offset'),
@@ -534,48 +774,36 @@ const routes = {
     return { genres: { genre: subsonicGenres() } };
   },
 
-  search3(params) {
-    const result = library.search(params.get('query') || '', {
-      artistCount: params.get('artistCount'),
-      artistOffset: params.get('artistOffset'),
-      albumCount: params.get('albumCount'),
-      albumOffset: params.get('albumOffset'),
-      songCount: params.get('songCount'),
-      songOffset: params.get('songOffset'),
-    });
-    return searchResultPayload('searchResult3', result);
+  async search3(params) {
+    return searchResultPayload('searchResult3', await mergedSearch(params));
   },
 
-  search2(params) {
-    const result = library.search(params.get('query') || '', {
-      artistCount: params.get('artistCount'),
-      artistOffset: params.get('artistOffset'),
-      albumCount: params.get('albumCount'),
-      albumOffset: params.get('albumOffset'),
-      songCount: params.get('songCount'),
-      songOffset: params.get('songOffset'),
-    });
-    return searchResultPayload('searchResult2', result);
+  async search2(params) {
+    return searchResultPayload('searchResult2', await mergedSearch(params));
   },
 
-  search(params) {
-    const result = library.search(params.get('query') || '', {
-      artistCount: params.get('artistCount'),
-      artistOffset: params.get('artistOffset'),
-      albumCount: params.get('albumCount'),
-      albumOffset: params.get('albumOffset'),
-      songCount: params.get('songCount'),
-      songOffset: params.get('songOffset'),
-    });
-    return searchResultPayload('searchResult', result);
+  async search(params) {
+    return searchResultPayload('searchResult', await mergedSearch(params));
   },
 
   getstarred2(params) {
-    return { starred2: { artist: [], album: [], song: [] } };
+    return {
+      starred2: {
+        artist: collection.starredArtistList().map(subsonicArtist),
+        album: collection.starredAlbumList().map(subsonicAlbum),
+        song: collection.starredSongs().map(subsonicSong),
+      },
+    };
   },
 
   getstarred(params) {
-    return { starred: { artist: [], album: [], song: [] } };
+    return {
+      starred: {
+        artist: collection.starredArtistList().map(subsonicArtist),
+        album: collection.starredAlbumList().map(subsonicAlbum),
+        song: collection.starredSongs().map(subsonicSong),
+      },
+    };
   },
 
   getscanstatus(params) {
@@ -605,31 +833,102 @@ const routes = {
     return { artistInfo: routes.getartistinfo2(params).artistInfo2 };
   },
 
-  getlyrics(params) {
-    return { lyrics: { artist: '', title: '', value: '' } };
+  // `ensureLyrics` also fetches (and saves) lyrics the PC never needed, so a
+  // song downloaded on the phone still shows its lyrics offline.
+  async getlyrics(params) {
+    const artist = String(params.get('artist') || '');
+    const title = String(params.get('title') || '');
+    const found = title ? await lyrics.ensureLyrics({ title, artist }) : null;
+    return { lyrics: { artist, title, value: found ? found.plain : '' } };
   },
 
-  getlyricsbysongid(params) {
-    return { lyricsList: { structuredLyrics: [] } };
+  // OpenSubsonic: what Navic uses, timed lines included.
+  async getlyricsbysongid(params) {
+    const id = requestPathParam(params, 'id');
+    const song = library.getSong(id) || online.getSong(id);
+    const found = song ? await lyrics.ensureLyrics(song) : null;
+    if (!song || !found) return { lyricsList: { structuredLyrics: [] } };
+    return {
+      lyricsList: {
+        structuredLyrics: [{
+          displayArtist: song.artist || '',
+          displayTitle: song.title || '',
+          lang: '',
+          synced: found.synced,
+          line: found.lines.map((line) => (
+            found.synced
+              ? { start: Math.max(0, Math.round(line.start)), value: line.value }
+              : { value: line.value }
+          )),
+        }],
+      },
+    };
   },
 
   getplaylists(params) {
-    return { playlists: { playlist: [] } };
+    return { playlists: { playlist: collection.playlists().map(playlistSummaryPayload) } };
   },
 
   getplaylist(params) {
-    throw new SubsonicError(ERRORS.NOT_FOUND, 'Playlist not found');
+    const pl = collection.getPlaylist(requestPathParam(params, 'id'));
+    if (!pl) throw new SubsonicError(ERRORS.NOT_FOUND, 'Playlist not found');
+    return playlistPayload(pl);
+  },
+
+  createplaylist(params) {
+    const name = String(params.get('name') || '').trim();
+    const existingId = requestPathParam(params, 'playlistId');
+    const songIds = params.getAll('songId');
+    const existing = existingId ? collection.getPlaylist(existingId) : null;
+    let pl;
+    if (existing) {
+      // Subsonic: createPlaylist with an existing id replaces its track list.
+      pl = collection.createPlaylist({ id: existingId, name: existing.name, songIds });
+    } else {
+      if (!name) throw new SubsonicError(ERRORS.MISSING_PARAM, 'Missing playlist name');
+      pl = collection.createPlaylist({ name, songIds });
+    }
+    if (!pl) throw new SubsonicError(ERRORS.GENERIC, 'Could not save playlist');
+    return playlistPayload(pl);
+  },
+
+  updateplaylist(params) {
+    const id = requestPathParam(params, 'playlistId', 'id');
+    const pl = collection.updatePlaylist(id, {
+      name: params.get('name') || '',
+      addSongIds: params.getAll('songIdToAdd'),
+      removeIndexes: params.getAll('songIndexToRemove'),
+    });
+    if (!pl) throw new SubsonicError(ERRORS.NOT_FOUND, 'Playlist not found');
+    return {};
+  },
+
+  deleteplaylist(params) {
+    const id = requestPathParam(params, 'id');
+    if (!collection.deletePlaylist(id)) {
+      throw new SubsonicError(ERRORS.NOT_FOUND, 'Playlist not found');
+    }
+    return {};
   },
 
   scrobble(params) {
+    const ids = params.getAll('id');
+    const time = Number(params.get('time')) || Date.now();
+    for (const id of ids) collection.scrobble(id, time);
     return {};
   },
 
   star(params) {
+    for (const id of params.getAll('id')) collection.starSong(id);
+    for (const id of params.getAll('albumId')) collection.setStarredAlbum(id, false);
+    for (const id of params.getAll('artistId')) collection.setStarredArtist(id, false);
     return {};
   },
 
   unstar(params) {
+    for (const id of params.getAll('id')) collection.unstarSong(id);
+    for (const id of params.getAll('albumId')) collection.setStarredAlbum(id, true);
+    for (const id of params.getAll('artistId')) collection.setStarredArtist(id, true);
     return {};
   },
 
@@ -726,12 +1025,10 @@ function handleSubsonic(req, res, method, params) {
     });
   }
   if (key === 'stream' || key === 'download') {
-    try {
-      return handleStream(req, res, params, key === 'download');
-    } catch (err) {
+    return Promise.resolve(handleStream(req, res, params, key === 'download')).catch((err) => {
       console.error(`[mobile] ${key} failed:`, err && err.message);
-      return sendEmpty(res, 500);
-    }
+      sendEmpty(res, 500);
+    });
   }
 
   const handler = routes[key];

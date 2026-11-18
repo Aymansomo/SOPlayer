@@ -69,6 +69,12 @@ function defaults() {
     folders: [],
     foldersSeeded: false,
     remoteEnabled: true,
+    // Phase 4: resolve YouTube / SoundCloud songs server-side and expose them
+    // as Subsonic entries next to the local library.
+    onlineEnabled: true,
+    // Folder served by the LAN "Apps" page (/store). Empty means the repo's
+    // `apps/` folder — that is where `npm run android:install` publishes builds.
+    storeDir: '',
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -125,6 +131,10 @@ function sanitize(input, base) {
   if (typeof input.foldersSeeded === 'boolean') out.foldersSeeded = input.foldersSeeded;
 
   if (typeof input.remoteEnabled === 'boolean') out.remoteEnabled = input.remoteEnabled;
+
+  if (typeof input.onlineEnabled === 'boolean') out.onlineEnabled = input.onlineEnabled;
+
+  if (typeof input.storeDir === 'string') out.storeDir = input.storeDir.trim().slice(0, 400);
 
   const createdAt = Number(input.createdAt);
   if (Number.isFinite(createdAt) && createdAt > 0) out.createdAt = createdAt;
@@ -227,6 +237,8 @@ function publicConfig() {
     folders: cfg.folders.slice(),
     foldersSeeded: !!cfg.foldersSeeded,
     remoteEnabled: cfg.remoteEnabled,
+    onlineEnabled: cfg.onlineEnabled !== false,
+    storeDir: cfg.storeDir || '',
     updatedAt: cfg.updatedAt,
     configPath: configPath(),
   };

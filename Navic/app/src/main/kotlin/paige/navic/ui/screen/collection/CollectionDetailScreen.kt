@@ -55,6 +55,7 @@ import paige.navic.domain.manager.runtime.PreferenceManager
 import paige.navic.domain.manager.session.DownloadManager
 import paige.navic.domain.model.DomainAlbum
 import paige.navic.domain.model.DomainPlaylist
+import paige.navic.domain.model.DomainPlaylistSongSort
 import paige.navic.domain.model.DomainSongCollection
 import paige.navic.domain.model.settings.BottomBarVisibilityMode
 import paige.navic.playback.MediaPlayer
@@ -65,6 +66,7 @@ import paige.navic.ui.component.layout.ArtCarouselItem
 import paige.navic.ui.component.layout.PullToRefreshBox
 import paige.navic.ui.component.layout.RootBottomBar
 import paige.navic.ui.component.sheet.CollectionSheet
+import paige.navic.ui.component.sheet.SortSheet
 import paige.navic.ui.component.snackbar.ErrorSnackBar
 import paige.navic.ui.core.UiState
 import paige.navic.ui.icons.Icons
@@ -106,6 +108,11 @@ fun CollectionDetailScreen(
 	val isReachable by viewModel.isReachable.collectAsStateWithLifecycle()
 
 	var shareId by remember { mutableStateOf<String?>(null) }
+	var showSortSheet by remember { mutableStateOf(false) }
+
+	val playlistSort by viewModel.sort.collectAsStateWithLifecycle()
+	val playlistSortReversed by viewModel.reversed.collectAsStateWithLifecycle()
+	val playlistFilters by viewModel.filters.collectAsStateWithLifecycle()
 
 	val otherAlbums by viewModel.otherAlbums.collectAsStateWithLifecycle()
 	val downloadManager = koinInject<DownloadManager>()
@@ -198,7 +205,11 @@ fun CollectionDetailScreen(
 
 					item {
 						CollectionDetailScreenHeadingRowButtons(
-							collection = collection
+							collection = collection,
+							sortLabel = stringResource(R.string.action_sort_and_filter),
+							onSortClick = if (collection is DomainPlaylist) {
+								{ showSortSheet = true }
+							} else null
 						)
 					}
 
@@ -315,7 +326,10 @@ fun CollectionDetailScreen(
 									isPlaylist = true,
 									onClick = {
 										if (playerState.currentSong?.id != song.id) {
-											player.playNow(collection, index)
+											// The row's index is a position in the sorted list, not in
+											// the server's order, so the queue is built from the same
+											// sort instead of passing the index to the playlist.
+											viewModel.playFrom(player, song)
 										} else {
 											player.togglePlay()
 										}
@@ -453,5 +467,19 @@ fun CollectionDetailScreen(
 				viewModel.clearSelection()
 			}
 		)
+
+		if (showSortSheet) {
+			SortSheet(
+				entries = DomainPlaylistSongSort.entries.toImmutableList(),
+				label = { stringResource(it.displayName) },
+				selectedSorting = playlistSort,
+				onSetSorting = { viewModel.setSorting(it) },
+				selectedReversed = playlistSortReversed,
+				onSetReversed = { viewModel.setReversed(it) },
+				selectedFilters = playlistFilters,
+				onToggleFilter = { viewModel.toggleFilter(it) },
+				onDismissRequest = { showSortSheet = false }
+			)
+		}
 	}
 }

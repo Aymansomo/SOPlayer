@@ -41,18 +41,27 @@ class PlaylistListViewModel(
 
 	val gridState = LazyGridState()
 
+	// The playlist library hides the server's read-only smart mixes; the home
+	// screen's instance of this view model keeps them so it can show them.
+	var hideSmart: Boolean = false
+
 	init {
 		viewModelScope.launch {
 			sessionManager.sessionState.collect { if (it is SessionState.Authenticated) refreshPlaylists(false) }
 		}
 	}
 
-	fun refreshPlaylists(fullRefresh: Boolean) = launch {
+	fun refreshPlaylists(
+		fullRefresh: Boolean,
+		hideSmart: Boolean = this.hideSmart
+	) = launch {
+		this@PlaylistListViewModel.hideSmart = hideSmart
 		items = repository.getPlaylists(
 			fullRefresh,
 			selectedSorting.value,
 			selectedReversed.value,
-			selectedFilters.value
+			selectedFilters.value,
+			hideSmart = hideSmart
 		).cachedIn(viewModelScope)
 	}
 

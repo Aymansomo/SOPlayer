@@ -1,11 +1,11 @@
 <!--
-  ~ Navic, a Subsonic music streaming app for Android
+  ~ SOPlayer, a Subsonic music streaming app for Android
   ~ Copyright (c) 2026 paige
   ~ SPDX-License-Identifier: GPL-3.0-only
   -->
 
 <resources>
-	<string name="app_name" translatable="false">Navic</string>
+	<string name="app_name" translatable="false">SOPlayer</string>
 
 	<string name="title_library">Library</string>
 	<string name="title_starred">Starred</string>
@@ -45,6 +45,8 @@
 	<string name="title_more_by_artist">More by %1$s</string>
 	<string name="title_disc_number">Disc %1$s</string>
 	<string name="title_genres">Genres</string>
+	<string name="title_for_you">For you</string>
+	<string name="title_trending_now">Trending now</string>
 	<string name="title_navigation_bar">Navigation Bar</string>
 	<string name="title_mini_player">Mini Player</string>
 	<string name="title_miscellaneous">Miscellaneous</string>
@@ -68,12 +70,29 @@
 	<string name="title_account">Account</string>
 	<string name="title_track_info">Track info</string>
 	<string name="title_statistics">Stats</string>
+	<string name="title_remote">Remote</string>
+	<string name="remote_nothing_playing">Nothing playing</string>
+	<string name="remote_unreachable">Can\'t reach Riff. Check that the mobile server is on in the desktop app and that this phone is on the same network.</string>
+	<string name="remote_disabled">Remote control is turned off in Riff</string>
+	<string name="remote_stale">Riff stopped reporting playback</string>
+	<string name="remote_retry">Try again</string>
+	<string name="notice_playing_on_pc">Playing on the PC</string>
+	<string name="notice_pc_needs_login">The PC rejected the remote login</string>
+	<string name="notice_pc_unreachable">Couldn\'t reach the PC</string>
+	<string name="remote_volume">Volume</string>
+	<string name="remote_like">Like</string>
+	<string name="remote_previous">Previous</string>
+	<string name="remote_next">Next</string>
+	<string name="remote_play_pause">Play or pause</string>
+	<string name="remote_media_art">Album art</string>
+	<string name="remote_play_something">Play on the PC</string>
+	<string name="remote_choose_what_plays">Choose what plays on the PC</string>
 	<string name="title_top_songs">Top songs</string>
 	<string name="title_top_artists">Top artists</string>
 	<string name="title_top_albums">Top albums</string>
 	<string name="title_lyric_providers">Lyric providers</string>
 	<string name="title_codeberg">Codeberg</string>
-	<string name="title_link_confirmation">Leaving Navic</string>
+	<string name="title_link_confirmation">Leaving SOPlayer</string>
 	<string name="title_audio_effects">Audio effects</string>
 	<string name="title_chat">Chat</string>
 	<string name="title_change_download_location">Move downloads?</string>
@@ -98,8 +117,8 @@
 	<string name="subtitle_download_quality">Adjust the quality of downloaded music</string>
 	<string name="subtitle_dynamic_theming">Dynamically theme the album and artist view based on the cover art</string>
 	<string name="subtitle_app_icon_designer">Designed by: %1$s</string>
-	<string name="subtitle_local_network_denied">You need to grant Navic access to your local network in order for your server to be reachable.</string>
-	<string name="subtitle_notifications_denied">You need to grant Navic notification permissions to receive download and sync notifications.</string>
+	<string name="subtitle_local_network_denied">You need to grant SOPlayer access to your local network in order for your server to be reachable.</string>
+	<string name="subtitle_notifications_denied">You need to grant SOPlayer notification permissions to receive download and sync notifications.</string>
 	<string name="subtitle_equalizer">Tune &amp; enhance audio</string>
 	<string name="subtitle_equalizer_disabled">Not available when audio offload is enabled</string>
 	<string name="subtitle_configure_lyric_providers">Choose where to fetch lyrics from</string>
@@ -158,6 +177,11 @@
 	<string name="option_sort_by_year">By year</string>
 	<string name="option_sort_by_genre">By genre</string>
 	<string name="option_sort_year">Year</string>
+	<string name="option_sort_playlist_order">Playlist order</string>
+	<string name="option_sort_title">Title</string>
+	<string name="option_sort_artist">Artist</string>
+	<string name="option_sort_album">Album</string>
+	<string name="action_sort_and_filter">Sort and filter</string>
 	<string name="option_sort_playlist_by_name">By name</string>
 	<string name="option_sort_playlist_date_added">Date added</string>
 	<string name="option_sort_playlist_duration">Duration</string>
@@ -372,6 +396,7 @@
 	<string name="action_cancel">Cancel</string>
 	<string name="action_refresh">Refresh</string>
 	<string name="action_share">Share</string>
+	<string name="action_play_on_pc">Play on PC</string>
 	<string name="action_save">Save</string>
 	<string name="action_track_info">View track info</string>
 	<string name="action_view_album">View album</string>
@@ -458,7 +483,7 @@
 	<string name="notice_link_confirmation">This link is taking you to the following website:</string>
 	<string name="notice_app_icon_changed">App icon changed, closing app!</string>
 
-	<string name="info_app_version">Navic %1$s</string>
+	<string name="info_app_version">SOPlayer %1$s</string>
 	<string name="info_action_is_permanent">This action cannot be undone</string>
 	<string name="info_error">Something went wrong.</string>
 	<string name="info_error_show">Show details</string>
@@ -491,6 +516,10 @@
 	<string name="info_listening_stats_ratio">%1$s%% of total listening time</string>
 	<string name="info_track_replay_gain_effective">ReplayGain effective value</string>
 	<string name="info_update">Version "%1$s" has been released</string>
+	<string name="info_update_downloading">Downloading update… %1$d%%</string>
+	<string name="error_update_no_apk">This release does not include an APK.</string>
+	<string name="error_update_download">Update failed: %1$s</string>
+	<string name="error_update_permission">Allow \"install unknown apps\" for this app, then tap Update again.</string>
 	<string name="info_shared_by">Shared by %1$s</string>
 	<string name="info_share_expires_in">Expires in %1$s</string>
 	<string name="info_share_expired">Expired</string>
@@ -529,7 +558,7 @@
 	<string name="info_repeat_off">Repeat off</string>
 	<string name="info_repeat_one">Repeat one</string>
 	<string name="info_repeat_all">Repeat all</string>
-	<string name="info_app_icon">Changing the app icon will close Navic as Android requires this. Some icons may look identical on your home screen if your launcher dynamically theme the icons.</string>
+	<string name="info_app_icon">Changing the app icon will close SOPlayer as Android requires this. Some icons may look identical on your home screen if your launcher dynamically theme the icons.</string>
 	<string name="info_equalizer_unsupported">Your device does not support this feature.</string>
 	<string name="info_equalizer_mode_not_builtin">Please adjust the external equalizer using its dedicated app.</string>
 	<string name="info_lyric_provider_disclaimer">Enabling LRCLIB and/or LyricsPlus will make requests to external and unaffiliated web services.</string>

@@ -378,7 +378,6 @@ const downloadInFlight = new Map();
 const cacheMaintenanceTimer = setInterval(() => {
   boundMap(searchCache, 20);
   boundMap(lyricsCache, 30);
-  if (global.gc) { try { global.gc(); } catch (_) {} }
 }, 300000);
 cacheMaintenanceTimer.unref();
 

@@ -31,7 +31,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import kotlinx.collections.immutable.persistentListOf
 import org.koin.compose.koinInject
@@ -56,6 +55,7 @@ import paige.navic.ui.navigation.Screen
 import paige.navic.ui.screen.playlist.dialog.PlaylistUpdateDialog
 import paige.navic.ui.util.InlineExplicitIcon
 import paige.navic.ui.util.buildSongInfoString
+import paige.navic.ui.util.rememberSongPlaybackState
 
 @Composable
 fun SongRow(
@@ -81,7 +81,7 @@ fun SongRow(
 ) {
 	val preferenceManager = koinInject<PreferenceManager>()
 	val player = koinInject<MediaPlayer>()
-	val playerState by player.uiState.collectAsStateWithLifecycle()
+	val playback by rememberSongPlaybackState(player, song.id)
 
 	val backStack = LocalNavStack.current
 	var playlistDialogShown by rememberSaveable { mutableStateOf(false) }
@@ -89,7 +89,7 @@ fun SongRow(
 	var duplicateQueueDialogShownPlayNext by rememberSaveable { mutableStateOf(false) }
 
 	val isDownloaded = download?.status == DownloadStatus.DOWNLOADED
-	val isCurrentTrack = playerState.currentSong?.id == song.id
+	val isCurrentTrack = playback.isCurrent
 	val isExplicit = song.explicitStatus == DomainExplicitStatus.Explicit
 		&& preferenceManager.explicitContentPlayback != ExplicitContentPlayback.Allowed
 	val maybeUnavailable = !isOnline && !isDownloaded
@@ -201,7 +201,7 @@ fun SongRow(
 				if (isCurrentTrack) {
 					Waveform(
 						modifier = Modifier.padding(end = 12.dp),
-						isPlaying = !playerState.isPaused
+						isPlaying = !playback.isPaused
 					)
 				}
 			}
