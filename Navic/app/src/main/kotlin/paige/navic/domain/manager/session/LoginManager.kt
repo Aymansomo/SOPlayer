@@ -9,6 +9,7 @@ package paige.navic.domain.manager.session
 import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
 import dev.zt64.subsonic.api.model.SubsonicErrorCode
 import dev.zt64.subsonic.api.model.SubsonicException
@@ -25,6 +26,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import paige.navic.R
 import paige.navic.domain.manager.runtime.NotificationIds
 import paige.navic.domain.manager.runtime.NotificationManager
@@ -86,6 +91,30 @@ class LoginManager(
 			?: return false
 
 		return withContext(Dispatchers.IO) { AddressUtil.isAddressLocal(host) }
+	}
+
+	/**
+	 * Fill the three fields from the QR code shown in SOPlayer → Settings →
+	 * Phone & Navic. Returns false when the code is not one of ours.
+	 */
+	fun applyLoginCode(raw: String): Boolean {
+		val payload = runCatching {
+			Json.parseToJsonElement(raw).jsonObject
+		}.getOrNull() ?: return false
+
+		if (payload["app"]?.jsonPrimitive?.contentOrNull != "soplayer") return false
+
+		val url = payload["url"]?.jsonPrimitive?.contentOrNull?.trim()?.takeIf { it.isNotBlank() }
+			?: return false
+		val username = payload["username"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+			?: return false
+		val password = payload["password"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+			?: return false
+
+		instanceState.setTextAndPlaceCursorAtEnd(url)
+		usernameState.setTextAndPlaceCursorAtEnd(username)
+		passwordState.setTextAndPlaceCursorAtEnd(password)
+		return true
 	}
 
 	fun login() {

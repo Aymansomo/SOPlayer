@@ -140,11 +140,20 @@ interface SongDao {
 	@Query("SELECT * FROM SongEntity WHERE title LIKE '%' || :query || '%' COLLATE NOCASE")
 	suspend fun searchSongsList(query: String): List<SongEntity>
 
+	/**
+	 * Songs kept on the phone are never deleted because the server dropped them:
+	 * an offline copy must keep working even when the album or playlist it came
+	 * from is gone from the PC.
+	 */
+	@Query("SELECT songId FROM DownloadEntity WHERE status = 'DOWNLOADED' AND filePath IS NOT NULL")
+	suspend fun getDownloadedSongIds(): List<String>
+
 	@Transaction
 	suspend fun updateSongsByAlbumId(albumId: String, remoteSongs: List<SongEntity>) {
 		val remoteIds = remoteSongs.map { it.songId }.toSet()
+		val downloadedIds = getDownloadedSongIds().toSet()
 		getSongsByAlbumId(albumId).forEach { localSong ->
-			if (localSong.songId !in remoteIds) {
+			if (localSong.songId !in remoteIds && localSong.songId !in downloadedIds) {
 				Logger.w("SongDao", "song ${localSong.songId} no longer belongs to album $albumId")
 				deleteSong(localSong.songId)
 			}
@@ -154,8 +163,9 @@ interface SongDao {
 
 	@Transaction
 	suspend fun deleteObsoleteSongs(remoteIds: Set<String>) {
+		val downloadedIds = getDownloadedSongIds().toSet()
 		getAllSongIds().forEach { localId ->
-			if (localId !in remoteIds) {
+			if (localId !in remoteIds && localId !in downloadedIds) {
 				Logger.w("SongDao", "song $localId no longer exists remotely")
 				deleteSong(localId)
 			}

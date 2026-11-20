@@ -50,9 +50,18 @@ class CollectionRepository(
 			}
 
 			is DomainPlaylist -> {
-				val playlist = sessionManager.api.getPlaylist(collection.id)
-				playlistDao.insertPlaylist(playlist.toEntity())
-				dbRepository.syncPlaylistSongs(collection.id)
+				// A downloaded playlist is an offline copy: if the PC no longer has
+				// it, opening it keeps the saved songs instead of failing.
+				val playlist = try {
+					sessionManager.api.getPlaylist(collection.id)
+				} catch (e: Exception) {
+					if (!dbRepository.isDownloadedPlaylist(collection.id)) throw e
+					null
+				}
+				if (playlist != null) {
+					playlistDao.insertPlaylist(playlist.toEntity())
+					dbRepository.syncPlaylistSongs(collection.id)
+				}
 				playlistDao.getPlaylistById(collectionId)
 			}
 		}

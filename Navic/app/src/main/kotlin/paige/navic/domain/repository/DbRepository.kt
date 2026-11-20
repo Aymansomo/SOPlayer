@@ -35,6 +35,7 @@ import paige.navic.database.entity.PlaylistSongCrossRef
 import paige.navic.database.entity.SongEntity
 import paige.navic.database.mapper.toDomainModel
 import paige.navic.database.mapper.toEntity
+import paige.navic.domain.manager.runtime.PreferenceManager
 import paige.navic.domain.manager.session.SessionManager
 import paige.navic.domain.model.DomainArtist
 import paige.navic.util.Logger
@@ -51,9 +52,14 @@ class DbRepository(
 	private val radioDao: RadioDao,
 	private val lyricDao: LyricDao,
 	private val syncDao: SyncActionDao,
-	private val sessionManager: SessionManager
+	private val sessionManager: SessionManager,
+	private val preferenceManager: PreferenceManager
 ) {
 	private val concurrentRequestLimit = Semaphore(20)
+
+	/** True for playlists the user downloaded, whose offline copy must be kept. */
+	fun isDownloadedPlaylist(playlistId: String): Boolean =
+		preferenceManager.downloadedPlaylists.contains(playlistId)
 
 	private val dbChunkSize = 500 // should be enough
 
@@ -308,7 +314,12 @@ class DbRepository(
 			playlistDao.insertPlaylists(chunk)
 		}
 
-		playlistDao.deleteObsoletePlaylists(validPlaylistIds)
+		// Downloaded playlists survive a delete on the PC so their songs keep
+		// playing offline.
+		playlistDao.deleteObsoletePlaylists(
+			validPlaylistIds,
+			preferenceManager.downloadedPlaylists
+		)
 
 		Logger.i("DbRepository", "- Playlists Synced: ${playlistEntities.size} playlists found")
 
@@ -337,17 +348,36 @@ class DbRepository(
 			songEntities.chunked(dbChunkSize).forEach { chunk ->
 				songDao.insertSongs(chunk)
 			}
-
-			val crossRefs = songEntities.mapIndexed { index, it ->
-				PlaylistSongCrossRef(playlistId = playlistId, songId = it.songId, position = index)
-			}
-
-			playlistDao.replacePlaylistSongs(playlistId, crossRefs)
-		} else {
-			playlistDao.deletePlaylistSongCrossRefs(playlistId)
 		}
 
-		Logger.i("DbRepository", "- Playlist [$playlistId] synced: ${songEntities.size} songs")
+		val crossRefs = songEntities.mapIndexed { index, it ->
+			PlaylistSongCrossRef(playlistId = playlistId, songId = it.songId, position = index)
+		}.toMutableList()
+
+		// A downloaded playlist is an offline copy: songs that are already saved on
+		// the phone stay in it even when the server stops returning them (the
+		// playlist was deleted or emptied on the PC).
+		if (preferenceManager.downloadedPlaylists.contains(playlistId)) {
+			playlistDao.getDownloadedSongIdsInPlaylist(playlistId)
+				.filter { it !in songIds }
+				.forEach { keptId ->
+					crossRefs.add(
+						PlaylistSongCrossRef(
+							playlistId = playlistId,
+							songId = keptId,
+							position = crossRefs.size
+						)
+					)
+				}
+		}
+
+		if (crossRefs.isEmpty()) {
+			playlistDao.deletePlaylistSongCrossRefs(playlistId)
+		} else {
+			playlistDao.replacePlaylistSongs(playlistId, crossRefs)
+		}
+
+		Logger.i("DbRepository", "- Playlist [$playlistId] synced: ${crossRefs.size} songs")
 		songIds
 	}
 

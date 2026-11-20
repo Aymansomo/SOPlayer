@@ -6,6 +6,7 @@
 
 package paige.navic.ui.screen.login.component
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +48,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import paige.navic.R
@@ -105,6 +109,20 @@ fun LoginScreenContent(innerPadding: PaddingValues) {
 				return@launch
 			}
 			viewModel.login()
+		}
+	}
+
+	val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+		val contents = result.contents
+		if (contents.isNullOrBlank()) return@rememberLauncherForActivityResult
+		if (viewModel.applyLoginCode(contents)) {
+			login()
+		} else {
+			loginScope.launch {
+				snackBarState.showSnackbar(
+					resources.getString(R.string.notice_invalid_login_qr)
+				)
+			}
 		}
 	}
 
@@ -169,6 +187,34 @@ fun LoginScreenContent(innerPadding: PaddingValues) {
 				Text(
 					text = stringResource(R.string.info_login_description),
 					modifier = Modifier.padding(horizontal = 16.dp)
+				)
+
+				OutlinedButton(
+					modifier = Modifier
+						.padding(horizontal = 16.dp)
+						.padding(top = 8.dp)
+						.fillMaxWidth(),
+					enabled = !isBusy,
+					shape = CircleShape,
+					onClick = {
+						scanLauncher.launch(
+							ScanOptions().apply {
+								setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+								setPrompt(resources.getString(R.string.info_scan_login_qr_prompt))
+								setBeepEnabled(false)
+								setOrientationLocked(false)
+							}
+						)
+					}
+				) {
+					Text(stringResource(R.string.action_scan_login_qr))
+				}
+
+				Text(
+					text = stringResource(R.string.info_scan_login_qr),
+					style = MaterialTheme.typography.labelMedium,
+					color = MaterialTheme.colorScheme.onSurfaceVariant,
+					modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
 				)
 
 				Spacer(Modifier.height(8.dp))

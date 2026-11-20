@@ -89,9 +89,25 @@ interface AlbumDao {
 	@Query("SELECT * FROM AlbumEntity WHERE albumId IN (:ids)")
 	suspend fun getAlbumsByIds(ids: List<String>): List<AlbumWithSongs>
 
+	/**
+	 * Albums that still hold a downloaded song stay on the phone even after the
+	 * server stops listing them, so offline songs keep their album page.
+	 */
+	@Query(
+		"""
+		SELECT albumId FROM AlbumEntity
+		WHERE albumId NOT IN (
+			SELECT s.belongsToAlbumId FROM SongEntity s
+			INNER JOIN DownloadEntity d ON d.songId = s.songId
+			WHERE d.status = 'DOWNLOADED' AND s.belongsToAlbumId IS NOT NULL
+		)
+		"""
+	)
+	suspend fun getAlbumIdsWithoutDownloads(): List<String>
+
 	@Transaction
 	suspend fun deleteObsoleteAlbums(remoteIds: Set<String>) {
-		getAllAlbumIds().forEach { localId ->
+		getAlbumIdsWithoutDownloads().forEach { localId ->
 			if (localId !in remoteIds) {
 				Logger.w("AlbumDao", "album $localId no longer exists remotely")
 				deleteAlbum(localId)

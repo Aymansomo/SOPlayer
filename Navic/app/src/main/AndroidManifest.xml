@@ -29,6 +29,12 @@
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+	<!-- scanning the login QR code shown by SOPlayer on the PC -->
+	<uses-permission android:name="android.permission.CAMERA" />
+	<uses-feature
+		android:name="android.hardware.camera"
+		android:required="false" />
+
 	<!-- needed for notifications for downloads and syncing db -->
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

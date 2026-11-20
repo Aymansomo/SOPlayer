@@ -422,6 +422,7 @@
 	<string name="action_navigate_back">Navigate up</string>
 	<string name="action_log_out">Log out</string>
 	<string name="action_log_in">Log in</string>
+	<string name="action_scan_login_qr">Scan QR code</string>
 	<string name="action_view_shares">Shares</string>
 	<string name="action_clear_search">Clear</string>
 	<string name="action_more">More</string>
@@ -554,6 +555,9 @@
 	<string name="info_syncing_artists">Syncing artists...</string>
 	<string name="info_syncing_radios">Syncing radios...</string>
 	<string name="info_login_description">Log into a Subsonic compatible music server.</string>
+	<string name="info_scan_login_qr">Instead of typing the URL and password, scan the QR code shown in SOPlayer → Settings → Phone &amp; Navic.</string>
+	<string name="info_scan_login_qr_prompt">Scan the QR code in SOPlayer → Settings → Phone &amp; Navic</string>
+	<string name="notice_invalid_login_qr">That QR code is not a SOPlayer login code.</string>
 	<string name="info_exception_handler">This will immediately crash the application. Are you sure?</string>
 	<string name="info_streaming_quality">Higher quality presets will use more data. Transcoding can severely impact load times and cause lyrics to become unsynced. Select Lossless if you encounter any issues.</string>
 	<string name="info_transcoding_unsupported">Your server does not support transcoding, so these options are unavailable.</string>

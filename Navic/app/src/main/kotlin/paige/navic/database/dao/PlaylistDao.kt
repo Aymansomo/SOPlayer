@@ -51,6 +51,17 @@ interface PlaylistDao {
 	@Query("DELETE FROM PlaylistSongCrossRef WHERE playlistId = :playlistId")
 	suspend fun deletePlaylistSongCrossRefs(playlistId: String)
 
+	/** Songs of this playlist that are downloaded to the phone. */
+	@Query(
+		"""
+		SELECT ps.songId FROM PlaylistSongCrossRef ps
+		INNER JOIN DownloadEntity d ON d.songId = ps.songId
+		WHERE ps.playlistId = :playlistId AND d.status = 'DOWNLOADED'
+		ORDER BY ps.position ASC
+		"""
+	)
+	suspend fun getDownloadedSongIdsInPlaylist(playlistId: String): List<String>
+
 	@Transaction
 	suspend fun replacePlaylistSongs(playlistId: String, crossRefs: List<PlaylistSongCrossRef>) {
 		deletePlaylistSongCrossRefs(playlistId)
@@ -67,10 +78,14 @@ interface PlaylistDao {
 	@Query("SELECT * FROM PlaylistEntity WHERE name LIKE '%' || :query || '%' COLLATE NOCASE")
 	suspend fun searchPlaylistsList(query: String): List<PlaylistWithSongs>
 
+	/**
+	 * [keepIds] are playlists the user downloaded: deleting one on the PC must
+	 * not take the offline copy on this phone with it.
+	 */
 	@Transaction
-	suspend fun deleteObsoletePlaylists(remoteIds: Set<String>) {
+	suspend fun deleteObsoletePlaylists(remoteIds: Set<String>, keepIds: Set<String> = emptySet()) {
 		getAllPlaylistIds().forEach { localId ->
-			if (localId !in remoteIds) {
+			if (localId !in remoteIds && localId !in keepIds) {
 				Logger.w("PlaylistDao", "playlist $localId no longer exists remotely")
 				deletePlaylist(localId)
 			}

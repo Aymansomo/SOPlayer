@@ -41,8 +41,8 @@ android {
 		applicationId = "paige.navic"
 		minSdk = libs.versions.android.minSdk.get().toInt()
 		targetSdk = libs.versions.android.targetSdk.get().toInt()
-		versionCode = 63
-		versionName = "v1.0.0-beta04"
+		versionCode = 64
+		versionName = "v1.0.0-beta05"
 		multiDexEnabled = true
 
 		ndk {
@@ -248,5 +248,6 @@ dependencies {
 	ksp(libs.androidx.room3.compiler)
 	implementation(libs.cryptohash)
 	implementation(libs.mimetypes)
+	implementation(libs.zxing.android.embedded)
 	coreLibraryDesugaring(libs.desugar.jdk.libs)
 }
