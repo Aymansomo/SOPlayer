@@ -63,4 +63,5 @@ jobs:
           files: dist/*
           draft: false
           prerelease: false
+          overwrite_files: true
           generate_release_notes: true
