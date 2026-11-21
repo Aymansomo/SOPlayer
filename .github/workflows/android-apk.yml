@@ -8,6 +8,9 @@ name: Android APK
 #   git push origin android-v1.0.0
 #
 # The run also uploads the APK as a workflow artifact for manual downloads.
+# The APK is signed with the committed Navic/app/debug.keystore so future
+# updates keep the same signature. Bump versionName in Navic/app/build.gradle.kts
+# to match the tag before pushing it.
 
 on:
   push:
@@ -58,4 +61,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+          draft: false
+          prerelease: false
           generate_release_notes: true

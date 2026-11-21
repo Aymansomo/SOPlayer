@@ -41,8 +41,8 @@ android {
 		applicationId = "paige.navic"
 		minSdk = libs.versions.android.minSdk.get().toInt()
 		targetSdk = libs.versions.android.targetSdk.get().toInt()
-		versionCode = 64
-		versionName = "v1.0.0-beta05"
+		versionCode = 65
+		versionName = "v1.0.0-beta07"
 		multiDexEnabled = true
 
 		ndk {
@@ -54,6 +54,14 @@ android {
 	}
 
 	signingConfigs {
+		// Committed debug keystore: CI releases keep one signature so the store
+		// can update an existing install. Never replace this file after publishing.
+		getByName("debug") {
+			storeFile = file("debug.keystore")
+			storePassword = "android"
+			keyAlias = "androiddebugkey"
+			keyPassword = "android"
+		}
 		create("release") {
 			keyAlias = System.getenv("SIGNING_KEY_ALIAS")
 			keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
